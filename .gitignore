@@ -1,0 +1,11 @@
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+MinerU-4_models_torch/*
+
+# Virtual environments
+.venv

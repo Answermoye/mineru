@@ -1,0 +1,2252 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>深护智康开放平台 · 接口文档</title>
+<meta name="description" content="深护智康开放平台对接文档：客户建档、表单结构查询、表单数据提交/编辑、健康日志查询，覆盖签名机制、数据字典、接口契约与错误码。">
+<meta name="color-scheme" content="light dark">
+<script>(function(){var t;try{t=localStorage.getItem("oap-theme")}catch(e){}if(t!=="light"&&t!=="dark"){t=(window.matchMedia&&matchMedia("(prefers-color-scheme:dark)").matches)?"dark":"light"}document.documentElement.setAttribute("data-theme",t)})();</script>
+<style>
+/* ==========================================================================
+   深护智康开放平台 · 接口对接文档
+   视觉基调：clinical precision —— 医疗仪表盘配色 + 工程规格书式排版
+
+   字体策略：等宽字体自托管（同目录 fonts/），中文走系统栈。
+             子集只含 Latin / 标点 / 箭头 / 制表符 / 几何图形，
+             中日韩字形不在子集内，自动回落到 PingFang SC 等系统中文字体。
+             授权见 fonts/OFL.txt（SIL OFL 1.1）。
+   ========================================================================== */
+
+@font-face{
+  font-family:"JetBrains Mono";
+  src:url("fonts/jetbrains-mono-400.woff2") format("woff2");
+  font-weight:400;font-style:normal;font-display:swap;
+}
+@font-face{
+  font-family:"JetBrains Mono";
+  src:url("fonts/jetbrains-mono-600.woff2") format("woff2");
+  font-weight:600;font-style:normal;font-display:swap;
+}
+@font-face{
+  font-family:"JetBrains Mono";
+  src:url("fonts/jetbrains-mono-700.woff2") format("woff2");
+  font-weight:700;font-style:normal;font-display:swap;
+}
+
+:root{
+  --f-sans:"PingFang SC","Hiragino Sans GB","Source Han Sans SC","Noto Sans CJK SC","Microsoft YaHei",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  --f-mono:"JetBrains Mono","SF Mono","Cascadia Mono","Roboto Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
+
+  --header-h:60px;
+  --sidebar-w:286px;
+  --rail-w:206px;
+  --content-w:872px;
+  --gutter:48px;
+  --r:10px;
+  --r-sm:6px;
+  --ease:cubic-bezier(.22,.61,.36,1);
+}
+
+/* ---------- 配色：浅色 ---------- */
+:root,:root[data-theme="light"]{
+  --bg:#fbfbf9;
+  --dot:rgba(16,60,54,.055);
+  --panel:#ffffff;
+  --panel-2:#f4f7f6;
+  --ink:#101f1d;
+  --ink-soft:#3f5450;
+  --muted:#71857f;
+  --line:#e7ecea;
+  --line-2:#d5deda;
+  --accent:#0d8b7c;
+  --accent-ink:#065349;
+  --accent-wash:#eef7f5;
+  --accent-line:#c2e0d9;
+  --warn:#a9700a;
+  --warn-wash:#fdf7ea;
+  --warn-line:#eeddb1;
+  --code-bg:#0e1b1a;
+  --code-head:#0a1514;
+  --code-ink:#cddcd9;
+  --code-line:#1e302e;
+  --tok-str:#7fd3a8;
+  --tok-kw:#6ec1ea;
+  --tok-com:#5c7a76;
+  --sh-1:0 1px 2px rgba(11,35,32,.05);
+  --sh-2:0 6px 24px -10px rgba(11,35,32,.18);
+  --sh-3:0 24px 60px -22px rgba(11,35,32,.30);
+}
+
+/* ---------- 配色：深色 ---------- */
+:root[data-theme="dark"]{
+  --bg:#0b1211;
+  --dot:rgba(140,200,190,.05);
+  --panel:#101a19;
+  --panel-2:#152120;
+  --ink:#e2ebe9;
+  --ink-soft:#aec0bd;
+  --muted:#7d928e;
+  --line:#1d2a28;
+  --line-2:#283835;
+  --accent:#2ec4ae;
+  --accent-ink:#7ee3d0;
+  --accent-wash:#102220;
+  --accent-line:#1f3d38;
+  --warn:#dda842;
+  --warn-wash:#1e1a0f;
+  --warn-line:#3a3018;
+  --code-bg:#070f0e;
+  --code-head:#050b0a;
+  --code-ink:#c4d4d1;
+  --code-line:#16211f;
+  --sh-1:0 1px 2px rgba(0,0,0,.45);
+  --sh-2:0 6px 24px -10px rgba(0,0,0,.6);
+  --sh-3:0 24px 60px -22px rgba(0,0,0,.75);
+}
+
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;-webkit-text-size-adjust:100%}
+body{
+  margin:0;
+  font-family:var(--f-sans);
+  font-size:15px;line-height:1.75;
+  color:var(--ink);background:var(--bg);
+  overflow-x:hidden;
+  font-variant-numeric:tabular-nums;
+  -webkit-font-smoothing:antialiased;
+  transition:background .25s var(--ease),color .25s var(--ease);
+}
+body::before{
+  content:"";position:fixed;inset:0;z-index:0;pointer-events:none;
+  background-image:radial-gradient(var(--dot) 1px,transparent 1px);
+  background-size:22px 22px;
+}
+[id]{scroll-margin-top:calc(var(--header-h) + 26px)}
+::selection{background:var(--accent);color:#fff}
+
+/* ==========================================================================
+   顶栏
+   ========================================================================== */
+.site-header{
+  position:fixed;top:0;left:0;right:0;height:var(--header-h);z-index:70;
+  background:color-mix(in srgb,var(--panel) 88%,transparent);
+  -webkit-backdrop-filter:saturate(180%) blur(14px);
+  backdrop-filter:saturate(180%) blur(14px);
+  border-bottom:1px solid var(--line);
+  display:flex;align-items:center;gap:12px;padding:0 18px;
+  transition:box-shadow .2s var(--ease),border-color .2s var(--ease);
+}
+.site-header.scrolled{box-shadow:var(--sh-1);border-bottom-color:var(--line-2)}
+
+.icon-btn{
+  display:inline-flex;align-items:center;justify-content:center;
+  width:34px;height:34px;flex:0 0 auto;
+  border:1px solid var(--line);border-radius:8px;
+  background:var(--panel);color:var(--ink-soft);cursor:pointer;
+  transition:color .15s,border-color .15s,background .15s,transform .15s var(--ease);
+  text-decoration:none;
+}
+.icon-btn:hover{color:var(--accent-ink);border-color:var(--accent-line);background:var(--accent-wash)}
+.icon-btn:active{transform:scale(.94)}
+.menu-btn{display:none}
+
+.brand{display:flex;align-items:center;gap:11px;min-width:0;text-decoration:none;color:inherit}
+.brand-mark{
+  display:flex;align-items:center;justify-content:center;flex:0 0 auto;
+  width:30px;height:30px;border-radius:9px;
+  background:linear-gradient(145deg,var(--accent),color-mix(in srgb,var(--accent) 62%,#0b3f38));
+  box-shadow:0 2px 8px -2px color-mix(in srgb,var(--accent) 55%,transparent);
+}
+.brand-title{display:flex;flex-direction:column;line-height:1.2;min-width:0}
+.brand-title b{font-size:14.5px;font-weight:650;letter-spacing:-.01em;white-space:nowrap}
+.brand-title i{
+  font-style:normal;font-family:var(--f-mono);
+  font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);
+  white-space:nowrap;
+}
+
+.head-right{margin-left:auto;display:flex;align-items:center;gap:9px}
+.ver-badge{
+  display:inline-flex;align-items:center;gap:7px;
+  background:var(--accent-wash);color:var(--accent-ink);
+  border:1px solid var(--accent-line);border-radius:999px;
+  font-family:var(--f-mono);font-size:11.5px;font-weight:600;letter-spacing:.02em;
+  padding:4px 12px 4px 10px;white-space:nowrap;
+}
+.ver-badge .pulse{
+  width:6px;height:6px;border-radius:50%;background:var(--accent);
+  box-shadow:0 0 0 0 color-mix(in srgb,var(--accent) 60%,transparent);
+  animation:pulse 2.4s ease-out infinite;
+}
+@keyframes pulse{
+  0%{box-shadow:0 0 0 0 color-mix(in srgb,var(--accent) 55%,transparent)}
+  70%{box-shadow:0 0 0 6px transparent}
+  100%{box-shadow:0 0 0 0 transparent}
+}
+
+.progress{
+  position:absolute;left:0;right:0;bottom:-1px;height:2px;
+  background:linear-gradient(90deg,var(--accent),color-mix(in srgb,var(--accent) 45%,#7ee3d0));
+  transform:scaleX(0);transform-origin:0 50%;
+  transition:transform .08s linear;
+}
+
+/* ==========================================================================
+   布局
+   ========================================================================== */
+.sidebar{
+  position:fixed;top:var(--header-h);left:0;bottom:0;width:var(--sidebar-w);z-index:65;
+  background:var(--panel);border-right:1px solid var(--line);
+  overflow-y:auto;overscroll-behavior:contain;
+  padding:14px 12px 22px;
+  display:flex;flex-direction:column;
+}
+.sidebar::-webkit-scrollbar{width:9px}
+.sidebar::-webkit-scrollbar-thumb{background:var(--line-2);border-radius:9px;border:3px solid var(--panel)}
+.sidebar::-webkit-scrollbar-track{background:transparent}
+.backdrop{display:none}
+
+.main{
+  position:relative;z-index:1;
+  margin-left:var(--sidebar-w);
+  padding:calc(var(--header-h) + 36px) var(--gutter) 96px;
+}
+.wrap{
+  display:grid;grid-template-columns:minmax(0,var(--content-w));
+  justify-content:center;gap:44px;max-width:1140px;margin:0 auto;
+}
+.content{min-width:0}
+
+.rail{display:none}
+@media (min-width:1460px){
+  .wrap{grid-template-columns:minmax(0,var(--content-w)) var(--rail-w);max-width:1160px}
+  .rail{display:block;align-self:start;position:sticky;top:calc(var(--header-h) + 36px)}
+}
+.rail.empty{visibility:hidden}
+.rail-in{border-left:1px solid var(--line);padding-left:16px}
+.rail-t{
+  margin:0 0 10px;font-family:var(--f-mono);font-size:10.5px;font-weight:600;
+  letter-spacing:.18em;text-transform:uppercase;color:var(--muted);
+}
+.rail ul{list-style:none;margin:0;padding:0}
+.rail li{margin:0}
+.rail a{
+  display:block;padding:4px 0;font-size:12.5px;line-height:1.5;
+  color:var(--muted);text-decoration:none;
+  transition:color .15s,transform .15s var(--ease);
+}
+.rail a:hover{color:var(--accent-ink);transform:translateX(2px)}
+.rail a.active{color:var(--accent-ink);font-weight:600}
+
+/* ==========================================================================
+   侧栏搜索 + 目录
+   ========================================================================== */
+.search{position:relative;margin:2px 4px 14px;flex:0 0 auto}
+.search svg{position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--muted);pointer-events:none}
+.search input{
+  width:100%;height:36px;padding:0 40px 0 32px;
+  font-family:inherit;font-size:13.5px;color:var(--ink);
+  background:var(--panel-2);border:1px solid var(--line);border-radius:8px;
+  outline:none;transition:border-color .15s,background .15s,box-shadow .15s;
+  -webkit-appearance:none;appearance:none;
+}
+.search input::placeholder{color:var(--muted)}
+.search input:focus{
+  background:var(--panel);border-color:var(--accent-line);
+  box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 12%,transparent);
+}
+.search kbd{
+  position:absolute;right:9px;top:50%;transform:translateY(-50%);
+  font-family:var(--f-mono);font-size:11px;color:var(--muted);
+  background:var(--panel);border:1px solid var(--line);border-bottom-width:2px;
+  border-radius:4px;padding:1px 6px;pointer-events:none;
+}
+.search input:focus + kbd{opacity:0}
+
+.toc{flex:1 0 auto}
+.toc ul{list-style:none;margin:0;padding:0}
+.toc li{margin:0}
+.toc a{
+  display:grid;grid-template-columns:30px 1fr;align-items:baseline;
+  padding:6px 10px;border-radius:7px;
+  color:var(--muted);text-decoration:none;font-size:13.5px;line-height:1.5;
+  transition:background .14s,color .14s;
+}
+.toc a::before{
+  content:attr(data-n);
+  font-family:var(--f-mono);font-size:11px;letter-spacing:-.02em;
+  color:var(--muted);opacity:.8;
+}
+.toc > ul > li > a{font-weight:600;color:var(--ink-soft);margin-top:6px}
+.toc > ul > li > a::before{color:var(--accent);opacity:1}
+.toc ul ul a{font-size:13px;padding-left:20px}
+.toc ul ul ul a{padding-left:34px}
+.toc ul ul a::before{grid-column:1;margin-left:-2px}
+.toc a:hover{background:var(--accent-wash);color:var(--accent-ink)}
+.toc a.active{
+  background:var(--accent-wash);color:var(--accent-ink);font-weight:600;
+  box-shadow:inset 2px 0 0 var(--accent);
+}
+.toc a.active::before{color:var(--accent)}
+
+.no-hit{
+  display:none;margin:10px 12px;font-size:13px;color:var(--muted);
+}
+
+/* ==========================================================================
+   排版
+   ========================================================================== */
+.hero{margin:0 0 26px}
+.eyebrow{
+  display:flex;align-items:center;gap:9px;margin:0 0 12px;
+  font-family:var(--f-mono);font-size:10.5px;font-weight:600;
+  letter-spacing:.2em;text-transform:uppercase;color:var(--muted);
+}
+.eyebrow .dot{width:3px;height:3px;border-radius:50%;background:var(--line-2)}
+.eyebrow span:last-child{color:var(--accent)}
+h1{
+  font-size:32px;line-height:1.28;margin:0 0 12px;
+  font-weight:680;letter-spacing:-.022em;
+}
+.lede{margin:0;font-size:16px;line-height:1.7;color:var(--ink-soft);max-width:62ch}
+
+h2{
+  position:relative;font-size:23px;font-weight:650;letter-spacing:-.016em;
+  margin:66px 0 20px;padding-top:24px;border-top:1px solid var(--line);
+}
+h2::before{
+  content:"";position:absolute;top:-1px;left:0;width:44px;height:2px;background:var(--accent);
+}
+h3{font-size:17px;font-weight:650;letter-spacing:-.01em;margin:38px 0 12px}
+h2 + h3{margin-top:24px}
+h4{font-size:15px;font-weight:650;letter-spacing:-.005em;margin:30px 0 10px}
+h3 + h4,h3 + p + h4{margin-top:20px}
+
+.secnum{
+  font-family:var(--f-mono);font-weight:600;color:var(--accent);
+  letter-spacing:-.02em;margin-right:.62em;
+}
+h2 .secnum{font-size:.7em;vertical-align:.05em}
+h3 .secnum{font-size:.8em}
+
+.hanchor{
+  margin-left:.5em;color:var(--line-2);text-decoration:none;font-weight:400;
+  opacity:0;transition:opacity .15s,color .15s;
+}
+h2:hover .hanchor,h3:hover .hanchor{opacity:1}
+.hanchor:hover{color:var(--accent)}
+
+p{margin:12px 0}
+a{color:var(--accent-ink);text-underline-offset:2px}
+a:hover{color:var(--accent)}
+strong{font-weight:650;color:var(--ink)}
+hr{display:none}
+ul,ol{margin:12px 0;padding-left:24px}
+li{margin:6px 0}
+li::marker{color:var(--muted)}
+
+.sublabel{
+  margin:22px 0 8px;font-family:var(--f-mono);
+  font-size:11px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--muted);
+}
+.sublabel strong{font:inherit;color:inherit}
+
+.content > footer{
+  margin-top:72px;padding-top:20px;border-top:1px solid var(--line);
+  color:var(--muted);font-size:12.5px;line-height:1.7;
+}
+
+/* ==========================================================================
+   首屏：提示条 / 元信息 / 快速入口
+   ========================================================================== */
+.metagrid{
+  display:grid;grid-template-columns:repeat(auto-fit,minmax(196px,1fr));
+  gap:1px;margin:22px 0;
+  border:1px solid var(--line);border-radius:var(--r);
+  background:var(--line);box-shadow:var(--sh-1);overflow:hidden;
+}
+.metagrid > div{padding:12px 16px;background:var(--panel)}
+.metagrid dt{
+  font-family:var(--f-mono);font-size:10.5px;font-weight:600;
+  letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-bottom:3px;
+}
+.metagrid dd{margin:0;font-size:13.5px;line-height:1.6;color:var(--ink-soft)}
+
+.quicklinks{
+  display:grid;grid-template-columns:repeat(auto-fill,minmax(206px,1fr));
+  gap:10px;margin:26px 0 8px;
+}
+.quicklinks a{
+  display:block;padding:13px 15px;text-decoration:none;
+  background:var(--panel);border:1px solid var(--line);border-radius:var(--r);
+  box-shadow:var(--sh-1);
+  transition:border-color .18s var(--ease),transform .18s var(--ease),box-shadow .18s var(--ease);
+}
+.quicklinks a:hover{
+  border-color:var(--accent-line);transform:translateY(-2px);box-shadow:var(--sh-2);
+}
+.q-n{
+  display:block;font-family:var(--f-mono);font-size:10.5px;font-weight:700;
+  letter-spacing:.12em;color:var(--accent);margin-bottom:5px;
+}
+.q-t{display:block;font-size:14.5px;font-weight:650;color:var(--ink);letter-spacing:-.01em}
+.q-d{display:block;font-size:12.5px;color:var(--muted);margin-top:3px;line-height:1.55}
+
+/* ==========================================================================
+   引用 / 提示块
+   ========================================================================== */
+blockquote{
+  position:relative;margin:16px 0;padding:12px 16px 12px 42px;
+  background:var(--accent-wash);border:1px solid var(--accent-line);
+  border-radius:var(--r-sm);color:var(--ink-soft);font-size:14px;
+}
+blockquote::before{
+  content:"i";position:absolute;left:14px;top:14px;
+  width:16px;height:16px;border-radius:50%;
+  background:var(--accent);color:#fff;
+  font:700 11px/16px var(--f-mono);text-align:center;font-style:italic;
+}
+blockquote p{margin:4px 0}
+blockquote p:first-child{margin-top:0}
+blockquote p:last-child{margin-bottom:0}
+
+blockquote.warn{background:var(--warn-wash);border-color:var(--warn-line)}
+blockquote.warn::before{background:var(--warn);content:"!"}
+
+/* ==========================================================================
+   代码
+   ========================================================================== */
+code{
+  font-family:var(--f-mono);font-size:.875em;
+  background:var(--accent-wash);color:var(--accent-ink);
+  border:1px solid color-mix(in srgb,var(--accent-line) 60%,transparent);
+  padding:1px 5px;border-radius:4px;word-break:break-all;
+  letter-spacing:-.01em;
+}
+h1 code,h2 code,h3 code{font-size:.85em}
+td code,th code{border-color:transparent}
+
+.codewrap{
+  margin:16px 0;background:var(--code-bg);
+  border:1px solid var(--code-line);border-radius:var(--r);
+  overflow:hidden;box-shadow:var(--sh-1);
+}
+.code-head{
+  display:flex;align-items:center;justify-content:space-between;gap:12px;
+  padding:7px 10px 7px 14px;background:var(--code-head);
+  border-bottom:1px solid var(--code-line);
+}
+.code-lang{
+  font-family:var(--f-mono);font-size:10px;font-weight:700;
+  letter-spacing:.16em;text-transform:uppercase;color:#6f918b;
+}
+pre{
+  margin:0;background:none;color:var(--code-ink);
+  padding:15px 16px;overflow-x:auto;
+  font-family:var(--f-mono);font-size:12.8px;line-height:1.72;
+  tab-size:4;letter-spacing:-.01em;
+}
+pre::-webkit-scrollbar{height:9px}
+pre::-webkit-scrollbar-thumb{background:#2a3f3c;border-radius:9px}
+pre code{background:none;color:inherit;padding:0;border:0;font-size:inherit;word-break:normal}
+.copy-btn{
+  flex:0 0 auto;
+  background:rgba(255,255,255,.05);color:#9fbab5;
+  border:1px solid rgba(255,255,255,.14);border-radius:5px;
+  padding:2px 10px;font-size:11.5px;font-family:var(--f-mono);cursor:pointer;
+  transition:background .15s,color .15s,border-color .15s;
+}
+.copy-btn:hover{background:rgba(255,255,255,.13);color:#fff}
+.copy-btn.ok{color:var(--tok-str);border-color:color-mix(in srgb,var(--tok-str) 55%,transparent)}
+.tok-string{color:var(--tok-str)}
+.tok-keyword{color:var(--tok-kw)}
+.tok-comment{color:var(--tok-com);font-style:italic}
+
+/* ==========================================================================
+   接口路径卡
+   ========================================================================== */
+.endpoint{
+  display:flex;align-items:center;gap:11px;flex-wrap:wrap;
+  margin:14px 0 22px;padding:9px 10px 9px 13px;
+  background:var(--panel);border:1px solid var(--line);border-left:3px solid var(--accent);
+  border-radius:var(--r-sm);box-shadow:var(--sh-1);
+}
+.endpoint .verb{
+  flex:0 0 auto;
+  background:var(--accent);color:#fff;
+  font-family:var(--f-mono);font-size:10.5px;font-weight:700;letter-spacing:.1em;
+  padding:3px 8px;border-radius:4px;
+}
+.endpoint .epath{
+  flex:1 1 auto;min-width:0;
+  background:none;border:0;padding:0;color:var(--ink);
+  font-family:var(--f-mono);font-size:13.5px;letter-spacing:-.01em;
+  overflow-x:auto;white-space:nowrap;
+}
+.endpoint .host{
+  flex:0 0 auto;font-family:var(--f-mono);font-size:10px;font-weight:600;
+  letter-spacing:.02em;color:var(--muted);background:var(--panel-2);
+  border:1px solid var(--line);border-radius:4px;padding:2px 7px;
+}
+.ep-copy{
+  flex:0 0 auto;
+  background:var(--panel-2);color:var(--muted);
+  border:1px solid var(--line);border-radius:5px;
+  padding:2px 10px;font-size:11.5px;font-family:var(--f-mono);cursor:pointer;
+  transition:background .15s,color .15s,border-color .15s;
+}
+.ep-copy:hover{background:var(--accent-wash);color:var(--accent-ink);border-color:var(--accent-line)}
+.ep-copy.ok{color:var(--accent);border-color:var(--accent-line)}
+
+.method{
+  display:inline-block;background:var(--accent);color:#fff;
+  font-size:11px;font-weight:700;font-family:var(--f-mono);
+  padding:2px 8px;border-radius:4px;letter-spacing:.6px;vertical-align:1px;
+}
+
+/* ==========================================================================
+   表格
+   ========================================================================== */
+.table-wrap{
+  overflow-x:auto;margin:16px 0;
+  border:1px solid var(--line);border-radius:var(--r);background:var(--panel);
+  box-shadow:var(--sh-1);-webkit-overflow-scrolling:touch;
+}
+.table-wrap::-webkit-scrollbar{height:9px}
+.table-wrap::-webkit-scrollbar-thumb{background:var(--line-2);border-radius:9px}
+table{border-collapse:collapse;width:100%;min-width:560px;font-size:13.5px}
+table.w-lg{min-width:780px}
+table.w-md{min-width:660px}
+th{
+  background:var(--panel-2);color:var(--muted);text-align:left;
+  font-family:var(--f-mono);font-size:10.5px;font-weight:600;
+  letter-spacing:.12em;text-transform:uppercase;
+  white-space:nowrap;border-bottom:1px solid var(--line-2);
+  padding:9px 14px;
+}
+td{padding:10px 14px;border-bottom:1px solid var(--line);vertical-align:top;color:var(--ink-soft)}
+td:first-child{color:var(--ink)}
+tbody tr:last-child td{border-bottom:none}
+tbody tr{transition:background .12s}
+tbody tr:hover{background:var(--accent-wash)}
+td code{white-space:nowrap}
+td.wrap code{white-space:normal}
+.c{text-align:center}
+.r{text-align:right}
+.mk{font-family:var(--f-mono);font-size:12px}
+.mk.yes{color:var(--accent);font-weight:700}
+.mk.no{color:var(--line-2)}
+
+/* ==========================================================================
+   代码语言页签
+   ========================================================================== */
+.tabs{
+  margin:20px 0;border:1px solid var(--line);border-radius:var(--r);
+  background:var(--panel);overflow:hidden;box-shadow:var(--sh-1);
+}
+.tab-bar{display:flex;flex-wrap:wrap;background:var(--panel-2);border-bottom:1px solid var(--line)}
+.tab-bar button{
+  appearance:none;-webkit-appearance:none;border:none;background:none;
+  padding:11px 20px;font-family:var(--f-mono);font-size:12.5px;cursor:pointer;
+  color:var(--muted);border-bottom:2px solid transparent;font-weight:600;
+  letter-spacing:.04em;transition:color .15s,background .15s,border-color .15s;
+}
+.tab-bar button:hover{color:var(--accent-ink)}
+.tab-bar button.active{color:var(--accent-ink);border-bottom-color:var(--accent);background:var(--panel)}
+.tab-panel{display:none;padding:2px 18px 18px}
+.tab-panel.active{display:block;animation:fadeIn .22s var(--ease)}
+.tab-panel h3{margin-top:18px}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+
+/* ==========================================================================
+   自测清单
+   ========================================================================== */
+.checklist{list-style:none;padding-left:2px}
+.checklist li{position:relative;padding-left:30px;margin:10px 0}
+.checklist li::before{
+  content:"";position:absolute;left:0;top:6px;width:14px;height:14px;
+  border:1.5px solid var(--accent);border-radius:4px;background:var(--panel);
+}
+
+/* ==========================================================================
+   进场动效
+   ========================================================================== */
+@keyframes riseIn{from{opacity:0;transform:translateY(9px)}to{opacity:1;transform:none}}
+.hero{animation:riseIn .48s var(--ease) both}
+.metagrid{animation:riseIn .48s var(--ease) .1s both}
+.quicklinks{animation:riseIn .48s var(--ease) .15s both}
+
+/* ==========================================================================
+   响应式
+   ========================================================================== */
+@media (max-width:1080px){
+  :root{--gutter:32px}
+}
+@media (max-width:767px){
+  .menu-btn{display:inline-flex}
+  .brand-title i{display:none}
+  .ver-badge{font-size:10.5px;padding:3px 9px}
+  .sidebar{
+    transform:translateX(-100%);transition:transform .24s var(--ease);
+    box-shadow:var(--sh-3);width:min(304px,86vw);
+  }
+  body.nav-open .sidebar{transform:none}
+  .backdrop{
+    display:block;position:fixed;inset:var(--header-h) 0 0 0;z-index:60;
+    background:rgba(6,26,23,.45);opacity:0;pointer-events:none;transition:opacity .24s;
+    -webkit-backdrop-filter:blur(2px);backdrop-filter:blur(2px);
+  }
+  body.nav-open .backdrop{opacity:1;pointer-events:auto}
+  body.nav-open{overflow:hidden}
+  .main{margin-left:0;padding:calc(var(--header-h) + 22px) 16px 64px}
+  h1{font-size:24px}
+  .lede{font-size:15px}
+  h2{font-size:19px;margin-top:48px;padding-top:20px}
+  h3{font-size:16px}
+  h4{font-size:14.5px}
+  pre{font-size:12.2px;padding:13px}
+  .tab-bar button{padding:10px 14px;font-size:12px}
+  .metagrid{grid-template-columns:1fr}
+  .quicklinks{grid-template-columns:1fr 1fr}
+}
+@media (max-width:420px){
+  .quicklinks{grid-template-columns:1fr}
+}
+
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation:none!important;transition:none!important}
+  html{scroll-behavior:auto}
+}
+
+@media print{
+  .site-header,.sidebar,.backdrop,.copy-btn,.ep-copy,.rail,.quicklinks,.hanchor{display:none!important}
+  body::before{display:none}
+  .main{margin:0;padding:0}
+  .wrap{display:block;max-width:none}
+  .tab-panel{display:block!important}
+  pre{white-space:pre-wrap;color:#111;background:#f6f6f6}
+  .codewrap{background:#f6f6f6;border-color:#ddd}
+  .code-lang{color:#666}
+}
+
+:root[data-theme="dark"] .ico-moon{display:none}
+:root:not([data-theme="dark"]) .ico-sun{display:none}
+
+:root[data-theme="dark"] .endpoint .verb,
+:root[data-theme="dark"] .method,
+:root[data-theme="dark"] blockquote::before{color:#06201d}
+:root[data-theme="dark"] ::selection{color:#06201d}
+.mk.no{color:var(--muted);opacity:.65}
+</style>
+</head>
+<body>
+
+<header class="site-header" id="siteHeader">
+  <button class="icon-btn menu-btn" id="menuBtn" type="button" aria-label="打开目录菜单" aria-expanded="false">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M3 6h18M3 12h18M3 18h18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+  </button>
+  <a class="brand" href="#top">
+    <span class="brand-mark" aria-hidden="true">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+        <path d="M12 21s-7.6-4.8-9.7-9.3C.8 8.5 2.7 5 6.2 5c2 0 3.2 1 3.8 2 .6-1 1.8-2 3.8-2 3.5 0 5.4 3.5 3.9 6.7C15.6 16.2 12 21 12 21z" fill="rgba(255,255,255,.22)"/>
+        <path d="M3.6 12.2h3.6l1.5-3.1 2.6 6.1 1.5-3h7.2" stroke="#fff" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </span>
+    <span class="brand-title"><b>深护智康开放平台</b><i>Open Platform API Docs</i></span>
+  </a>
+  <div class="head-right">
+    <span class="ver-badge"><i class="pulse" aria-hidden="true"></i>v1.0</span>
+    <button class="icon-btn" id="themeBtn" type="button" aria-label="切换深浅色主题" title="切换深浅色主题">
+      <svg class="ico-sun" width="17" height="17" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="4.2" stroke="currentColor" stroke-width="1.7"/><path d="M12 2.6v2.2M12 19.2v2.2M2.6 12h2.2M19.2 12h2.2M5.3 5.3l1.6 1.6M17.1 17.1l1.6 1.6M18.7 5.3l-1.6 1.6M6.9 17.1l-1.6 1.6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+      <svg class="ico-moon" width="17" height="17" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M20 14.4A8.4 8.4 0 1 1 9.6 4a6.9 6.9 0 0 0 10.4 10.4z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>
+    </button>
+  </div>
+  <div class="progress" id="progress"></div>
+</header>
+
+<nav class="sidebar" id="sidebar" aria-label="文档目录">
+  <div class="search">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.4" stroke="currentColor" stroke-width="2"/><path d="m15.6 15.6 4 4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+    <input id="tocSearch" type="search" placeholder="搜索章节" autocomplete="off" spellcheck="false" aria-label="搜索章节">
+    <kbd>/</kbd>
+  </div>
+  <div class="toc" id="toc-nav">
+    <ul>
+      <li><a href="#overview">1. 概述与对接流程</a>
+        <ul>
+          <li><a href="#core-concepts">1.1 核心概念</a></li>
+          <li><a href="#integration-flow">1.2 对接流程</a></li>
+        </ul>
+      </li>
+      <li><a href="#conventions">2. 通用约定</a>
+        <ul>
+          <li><a href="#environments">2.1 环境地址</a></li>
+          <li><a href="#protocol">2.2 协议约定</a></li>
+          <li><a href="#common-headers">2.3 公共请求头</a></li>
+          <li><a href="#response-format">2.4 统一响应格式</a></li>
+          <li><a href="#rate-limit">2.5 限流</a></li>
+          <li><a href="#idempotency">2.6 幂等性</a></li>
+          <li><a href="#query-scope">2.7 日志查询范围与排序约定</a></li>
+        </ul>
+      </li>
+      <li><a href="#signature">3. 签名机制</a>
+        <ul>
+          <li><a href="#credentials">3.1 凭证</a></li>
+          <li><a href="#sign-algorithm">3.2 签名算法（HMAC-SHA256）</a></li>
+          <li><a href="#sign-example">3.3 计算示例</a></li>
+        </ul>
+      </li>
+      <li><a href="#data-dictionary">4. 数据字典</a>
+        <ul>
+          <li><a href="#field-type">4.1 字段类型与值格式</a></li>
+          <li><a href="#value-type">4.2 值类型</a></li>
+          <li><a href="#validation-rules">4.3 校验规则与选项</a></li>
+          <li><a href="#denormalize">4.4 日志查询接口的字段值还原规则</a></li>
+        </ul>
+      </li>
+      <li><a href="#api-detail">5. 接口详情</a>
+        <ul>
+          <li><a href="#api-customer-create">5.1 客户建档</a></li>
+          <li><a href="#api-form-list">5.2 查询表单列表</a></li>
+          <li><a href="#api-form-detail">5.3 查询表单结构</a></li>
+          <li><a href="#api-submission-create">5.4 新增表单提交</a></li>
+          <li><a href="#api-submission-update">5.5 编辑表单提交</a></li>
+          <li><a href="#api-submission-detail">5.6 查询提交详情</a></li>
+          <li><a href="#api-log-find">5.7 查询日志列表</a></li>
+          <li><a href="#api-log-find-detail">5.8 查询日志详情</a></li>
+        </ul>
+      </li>
+      <li><a href="#field-dictionary">6. 日志字段清单</a>
+        <ul>
+          <li><a href="#fd-blood-glucose">6.1 血糖日志</a></li>
+          <li><a href="#fd-food">6.2 饮食日志</a></li>
+          <li><a href="#fd-pressure">6.3 血压日志</a></li>
+          <li><a href="#fd-weight">6.4 体重日志</a></li>
+        </ul>
+      </li>
+      <li><a href="#error-codes">7. 错误码总表</a></li>
+      <li><a href="#faq">8. 对接注意事项与 FAQ</a></li>
+      <li><a href="#appendix">9. 附录：签名验证用例与示例代码</a>
+        <ul>
+          <li><a href="#sample-curl">9.1 curl 完整示例</a></li>
+          <li><a href="#sample-nodejs">9.2 Node.js</a></li>
+          <li><a href="#sample-python">9.3 Python</a></li>
+          <li><a href="#sample-java">9.4 Java</a></li>
+          <li><a href="#sign-checklist">9.5 签名自测清单</a></li>
+        </ul>
+      </li>
+    </ul>
+  </div>
+  <p class="no-hit" id="noHit">未找到匹配章节</p>
+</nav>
+<div class="backdrop" id="backdrop"></div>
+
+<main class="main">
+<div class="wrap">
+<article class="content" id="content">
+
+<div class="hero">
+  <p class="eyebrow"><span>Open Platform</span><span class="dot"></span><span>API Docs</span><span class="dot"></span><span>v1.0</span></p>
+  <h1 id="top">开放平台接口对接文档</h1>
+  <p class="lede">面向已获授权第三方系统的 server-to-server 对接说明：客户建档、表单结构查询、表单数据提交与编辑、健康日志（血糖 / 饮食 / 血压 / 体重）查询。覆盖签名机制、数据字典、接口契约与错误码，一共 8 个接口。</p>
+</div>
+
+<dl class="metagrid">
+  <div><dt>面向对象</dt><dd>与本平台合作的第三方系统开发人员（server-to-server 对接）</dd></div>
+  <div><dt>版本</dt><dd>v1.0</dd></div>
+  <div><dt>更新日期</dt><dd>2026-09-18</dd></div>
+  <div><dt>接口数量</dt><dd>共 8 个，详见<a href="#api-detail">第 5 节</a></dd></div>
+</dl>
+
+<nav class="quicklinks" aria-label="快速入口">
+  <a href="#core-concepts"><span class="q-n">01</span><span class="q-t">核心概念</span><span class="q-d">公司、项目、表单、客户、提交/日志</span></a>
+  <a href="#common-headers"><span class="q-n">02</span><span class="q-t">公共请求头</span><span class="q-d">五个必填 Header 与限流</span></a>
+  <a href="#signature"><span class="q-n">03</span><span class="q-t">签名机制</span><span class="q-d">HMAC-SHA256 与防重放</span></a>
+  <a href="#data-dictionary"><span class="q-n">04</span><span class="q-t">数据字典</span><span class="q-d">字段类型与值格式</span></a>
+  <a href="#api-detail"><span class="q-n">05</span><span class="q-t">接口详情</span><span class="q-d">建档、表单、提交、编辑、日志查询共 8 个接口</span></a>
+  <a href="#field-dictionary"><span class="q-n">06</span><span class="q-t">日志字段清单</span><span class="q-d">四类日志的实际字段</span></a>
+  <a href="#error-codes"><span class="q-n">07</span><span class="q-t">错误码总表</span><span class="q-d">按类别归集的返回码</span></a>
+  <a href="#faq"><span class="q-n">08</span><span class="q-t">注意事项 / FAQ</span><span class="q-d">对接前必读的坑位清单</span></a>
+</nav>
+
+<h2 id="overview">1. 概述与对接流程</h2>
+
+<p>开放平台提供客户建档、表单结构查询、表单数据提交与编辑、以及健康日志（血糖 / 饮食 / 血压 / 体重）查询能力，共 8 个接口。第三方可以查询项目下的表单定义，以客户为单位提交 / 修改表单数据，也可以按客户查询历史提交的健康日志记录。</p>
+
+<h3 id="core-concepts">1.1 核心概念</h3>
+
+<div class="table-wrap">
+<table>
+  <thead><tr><th>概念</th><th>说明</th></tr></thead>
+  <tbody>
+    <tr><td>公司（company）</td><td>开放平台的接入主体。每个接入方对应平台内一家公司，凭证（<code>app_key</code> / <code>app_secret</code>）按公司发放</td></tr>
+    <tr><td>项目（project）</td><td>公司下的业务项目，编码为 <code>project_code</code>。一家公司可有多个项目，<strong>所有业务接口都要求传 <code>project_code</code></strong>，且该项目必须属于当前 <code>app_key</code> 所属公司，否则 <code>40301</code></td></tr>
+    <tr><td>表单（form）</td><td>项目下的一张数据采集表单，编码为 <code>form_code</code>，由若干字段组成</td></tr>
+    <tr><td>字段（field）</td><td>表单的最小数据单元，编码为 <code>field_code</code>，有类型（文本 / 单选 / 日期…）与校验规则</td></tr>
+    <tr><td>客户（owner）</td><td>数据的归属人。第三方<strong>不接触平台内部客户编码</strong>，通过手机号、微信 UnionID 或 <code>customer_code</code> 指代客户，由平台在项目内映射到具体客户。客户须先建档（见 <a href="#api-customer-create">5.1</a>）</td></tr>
+    <tr><td>提交（submission）/ 日志（log）</td><td>同一份数据的两种称呼：<a href="#api-submission-create">5.4 新增表单提交</a> 写入的记录，审核通过后可通过 <a href="#api-log-find">5.7 查询日志列表</a> 查到（仅限血糖 / 饮食 / 血压 / 体重四类表单）</td></tr>
+  </tbody>
+</table>
+</div>
+
+<h3 id="integration-flow">1.2 对接流程</h3>
+
+<pre><code data-lang="text">① 线下申请接入 ──► 平台发放 app_key / app_secret，并告知 project_code
+② 调用 5.1 客户建档 ──► 记录返回的 customer_code（幂等，客户已存在则返回既有的）
+③ 调用 5.2 查询表单列表 ──► 拿到项目下可用的 form_code
+④ 调用 5.3 查询表单结构 ──► 拿到字段清单、类型、校验规则（建议缓存）
+⑤ 按第 4 节数据字典组装 field_values ──► 调用 5.4 新增提交，记录返回的 submission_code
+⑥ 数据有误需修正 ──► 调用 5.5 编辑提交
+⑦ 联调回查 ──► 调用 5.6 查询提交详情
+⑧ 需要按客户批量回看历史健康日志（仅限血糖/饮食/血压/体重四类，且需已审核）
+   ──► 调用 5.7 查询日志列表 / 5.8 查询日志详情</code></pre>
+
+<blockquote><p>② 是先决条件：表单数据必须挂在一个已建档的客户上。客户若已由平台侧录入，这一步可跳过，或照样调用一次拿 <code>customer_code</code>（幂等，不会建重复）。③④ 是可选步骤：如果已经知道要用的 <code>form_code</code>，可以直接从 ⑤ 或 ⑧ 开始。</p></blockquote>
+
+<hr>
+
+<h2 id="conventions">2. 通用约定</h2>
+
+<h3 id="environments">2.1 环境地址</h3>
+
+<p>接口按用途分布在两个地址下，调用前请对照下表确认发往哪个地址：</p>
+
+<div class="table-wrap">
+<table>
+  <thead><tr><th>环境</th><th>Base URL</th></tr></thead>
+  <tbody>
+    <tr><td>测试环境</td><td><code>https://open-api-test.deepaihealth.cn</code></td></tr>
+    <tr><td>生产环境</td><td><code>https://open-api.deepaihealth.cn</code></td></tr>
+  </tbody>
+</table>
+</div>
+
+<p>所有接口路径以 <code>/v1/</code> 开头，下文接口路径均为相对 Base URL 的路径。</p>
+
+<h3 id="protocol">2.2 协议约定</h3>
+
+<ul>
+  <li>统一使用 <strong>HTTPS + POST + JSON</strong>（<code>Content-Type: application/json; charset=utf-8</code>）</li>
+  <li>字符编码统一 <strong>UTF-8</strong></li>
+  <li>时间统一使用<strong>北京时间（UTC+8）</strong>，格式 <code>YYYY-MM-DD HH:mm:ss</code>（日期为 <code>YYYY-MM-DD</code>）</li>
+  <li>请求体大小上限 2 MB</li>
+  <li><strong>所有参数一律放请求体，接口不接受 query 参数</strong>；携带 query 的请求直接返回 <code>40001</code></li>
+</ul>
+
+<h3 id="common-headers">2.3 公共请求头</h3>
+
+<div class="table-wrap">
+<table class="w-md">
+  <thead><tr><th>Header</th><th class="c">必填</th><th>说明</th></tr></thead>
+  <tbody>
+    <tr><td><code>Content-Type</code></td><td class="c">✓</td><td><code>application/json; charset=utf-8</code></td></tr>
+    <tr><td><code>X-App-Key</code></td><td class="c">✓</td><td>平台发放的应用标识</td></tr>
+    <tr><td><code>X-Timestamp</code></td><td class="c">✓</td><td>毫秒级时间戳，与服务器时间偏差不得超过 <strong>±5 分钟</strong></td></tr>
+    <tr><td><code>X-Nonce</code></td><td class="c">✓</td><td>随机字符串（16~64 位，建议 UUID），<strong>10 分钟内不得重复</strong>，用于防重放</td></tr>
+    <tr><td><code>X-Sign</code></td><td class="c">✓</td><td>请求签名，算法见<a href="#signature">第 3 节</a></td></tr>
+    <tr><td><code>X-Sign-Version</code></td><td class="c">—</td><td>签名协议版本，当前为 <code>2</code>。可不传；传了则必须为 <code>2</code>，否则返回 <code>40001</code>。建议显式传，便于后续协议升级平滑过渡</td></tr>
+  </tbody>
+</table>
+</div>
+
+<h3 id="response-format">2.4 统一响应格式</h3>
+
+<p>所有接口（含业务失败）均返回 <strong>HTTP 200</strong>，以响应体中的 <code>code</code> 判断结果：</p>
+
+<pre><code data-lang="json">// 成功
+{
+  "code": 0,
+  "msg": "OK",
+  "data": { /* 业务数据，无数据时为 null */ },
+  "request_id": "b3bee3093be34976863cdcb3733fa030"   // 每次请求唯一，排查问题时请提供
+}
+
+// 失败
+{
+  "code": 42201,
+  "msg": "字段校验失败",
+  "data": { /* 部分错误码会携带明细，见各接口说明 */ },
+  "request_id": "..."
+}</code></pre>
+
+<blockquote><p>仅当网关层异常（路径不存在、服务不可用）时才会出现非 200 的 HTTP 状态码，此时响应体不保证为上述格式。</p></blockquote>
+
+<h3 id="rate-limit">2.5 限流</h3>
+
+<ul>
+  <li>按 <code>app_key</code> 限流，默认 <strong>300 次/分钟</strong>（如需更高配额请联系平台）</li>
+  <li>限流按 2.1 表中的地址分别计数：打到 <code>open-api</code> 地址的请求和打到 <code>open-query-api</code> 地址的请求配额互不影响</li>
+  <li>超限返回 <code>code = 42901</code>，响应头携带：</li>
+</ul>
+
+<div class="table-wrap">
+<table>
+  <thead><tr><th>响应头</th><th>说明</th></tr></thead>
+  <tbody>
+    <tr><td><code>X-RateLimit-Limit</code></td><td>当前窗口配额</td></tr>
+    <tr><td><code>X-RateLimit-Remaining</code></td><td>当前窗口剩余次数</td></tr>
+    <tr><td><code>X-RateLimit-Reset</code></td><td>窗口重置时间（秒级时间戳）</td></tr>
+  </tbody>
+</table>
+</div>
+
+<h3 id="idempotency">2.6 幂等性</h3>
+
+<ul>
+  <li><strong>客户建档（5.1）</strong> 幂等：同一 <code>project_code</code> + <code>owner</code> 重复调用只返回既有客户，不会重复建档</li>
+  <li><strong>新增提交（5.4）</strong> 支持幂等：请求中可传第三方业务单号 <code>external_no</code>（项目内唯一）。同一 <code>project_code + external_no</code> 重复调用不会产生重复数据，返回首次创建的结果，并以 <code>data.is_duplicate = true</code> 标识</li>
+  <li><strong>编辑提交（5.5）</strong> 天然幂等：同一请求重复调用结果一致</li>
+  <li>网络超时等异常场景，<strong>建议使用 <code>external_no</code> + 重试</strong>（建议指数退避，最多 3 次）</li>
+</ul>
+
+<blockquote><p>查询类接口（5.2、5.3、5.6、5.7、5.8）本身不涉及写入，不需要考虑幂等。</p></blockquote>
+
+<h3 id="query-scope">2.7 日志查询范围与排序约定</h3>
+
+<ul>
+  <li><code>form/list</code>、<code>form/detail</code> 可查 <code>project_code</code> 对应项目下任意启用中的表单结构，不限于血糖 / 饮食 / 血压 / 体重</li>
+  <li><code>log/find</code>、<code>log/find_detail</code> 只接受 <code>form_code</code> 四选一，且只返回 <code>submission_status = 2</code>（已审核）的记录 —— 草稿、待审核、已驳回、已删除的记录一律查不到</li>
+  <li><code>log/find</code> 固定按 <code>submit_time</code> 倒序（最新的在前），不支持自定义排序方向；分页用 <code>page</code> / <code>page_size</code>，默认第 1 页、每页 20 条，最大 100 条</li>
+  <li>查询永远限定在 <code>owner</code> 解析出的那一个客户名下，不支持跨客户批量查询</li>
+</ul>
+
+<hr>
+
+<h2 id="signature">3. 签名机制</h2>
+
+<h3 id="credentials">3.1 凭证</h3>
+
+<div class="table-wrap">
+<table>
+  <thead><tr><th>凭证</th><th>说明</th></tr></thead>
+  <tbody>
+    <tr><td><code>app_key</code></td><td>应用标识，随请求头明文传输</td></tr>
+    <tr><td><code>app_secret</code></td><td>签名密钥，<strong>仅保存在第三方服务端，严禁写入前端 / App / 小程序等客户端，严禁随请求传输</strong></td></tr>
+  </tbody>
+</table>
+</div>
+
+<p>如怀疑 <code>app_secret</code> 泄露，请立即联系平台重置。</p>
+
+<h3 id="sign-algorithm">3.2 签名算法（HMAC-SHA256）</h3>
+
+<pre><code data-lang="text">stringToSign = METHOD + "\n" + PATH + "\n" + X-Timestamp + "\n" + X-Nonce + "\n" + requestBody
+X-Sign = lowercase( hex( HMAC-SHA256( app_secret, stringToSign ) ) )</code></pre>
+
+<p>要点：</p>
+
+<ol>
+  <li><code>METHOD</code> 为大写请求方法。本文档所有接口均为 <code>POST</code></li>
+  <li><code>PATH</code> 为<strong>不含 query 的请求路径</strong>，以 <code>/</code> 开头，如 <code>/v1/form/detail</code>。按<strong>实际发送的字面值</strong>参与签名，服务端不做归一化——大小写、结尾斜杠都敏感，两端必须完全一致</li>
+  <li><code>requestBody</code> 为<strong>实际发送的原始 JSON 字节串</strong>（UTF-8）。计算签名与发送请求必须使用<strong>同一份序列化结果</strong>，不要序列化两次（键顺序、空格差异都会导致验签失败）</li>
+  <li>五段之间用换行符 <code>\n</code>（LF，<code>0x0A</code>）连接，末尾<strong>没有</strong>换行符</li>
+  <li>结果为 64 位小写十六进制字符串</li>
+  <li>服务端校验顺序：<code>app_key</code> → 限流 → 时间戳窗口（±5 分钟）→ nonce 是否重复 → 签名比对，任一不通过分别返回 <code>40101/40102</code> / <code>42901</code> / <code>40104</code> / <code>40105</code> / <code>40103</code></li>
+</ol>
+
+<blockquote><p>方法与路径纳入签名，是为了让一次签名只对<strong>它本来要访问的那个接口</strong>有效，无法被中间环节改道到其它接口。签名不含域名，<strong>请确保请求实际发送的地址与 2.1 表中一致</strong>，发错地址会直接连接失败或 404，与签名无关。</p></blockquote>
+
+<h3 id="sign-example">3.3 计算示例</h3>
+
+<p>给定：</p>
+
+<pre><code data-lang="text">app_key    = ak_demo_7f3a9c2e1b6d
+app_secret = sk_demo_2b8f4a6c9e1d3f5a7b0c
+method     = POST
+path       = /v1/log/find
+timestamp  = 1789267200000
+nonce      = 8e4a1c6f9b3d2a7e
+body       = {"project_code":"proj_demo_0001","form_code":"form_blood_glucose_log","owner":{"type":"phone","value":"13800138000"},"page":1,"page_size":20}</code></pre>
+
+<p>则：</p>
+
+<pre><code data-lang="text">stringToSign =
+POST\n/v1/log/find\n1789267200000\n8e4a1c6f9b3d2a7e\n{"project_code":"proj_demo_0001","form_code":"form_blood_glucose_log","owner":{"type":"phone","value":"13800138000"},"page":1,"page_size":20}
+
+X-Sign = fb9bec6f23c67846da1fa961cea4076b8ed4b671ac0c6b54f106237c81293c58</code></pre>
+
+<p>请先用本组数据验证你的签名实现，再进行联调。完整 curl 与多语言示例代码见<a href="#appendix">附录</a>。</p>
+
+<hr>
+
+<h2 id="data-dictionary">4. 数据字典</h2>
+
+<h3 id="field-type">4.1 字段类型（field_type）与值格式</h3>
+
+<p><code>field_values[].field_value</code> 提交（5.4/5.5）或响应（5.6/5.7/5.8）时都必须 / 会符合下表规则，类型不匹配在提交类接口会返回 <code>42201</code>：</p>
+
+<div class="table-wrap">
+<table class="w-lg">
+  <thead><tr><th>field_type</th><th>含义</th><th>提交值格式 / 响应值格式</th><th>示例</th></tr></thead>
+  <tbody>
+    <tr><td><code>Input</code></td><td>单行文本 / 数值</td><td>string 或 number（按 <code>value_type</code>）</td><td class="wrap"><code>"张三"</code>、<code>68.5</code></td></tr>
+    <tr><td><code>Textarea</code></td><td>多行文本</td><td>string</td><td class="wrap"><code>"无明显不适"</code></td></tr>
+    <tr><td><code>Select</code></td><td>下拉选择</td><td>string，取 <code>options[].value</code>；<code>multiple=true</code> 时为 string 数组</td><td class="wrap"><code>"2型"</code></td></tr>
+    <tr><td><code>Radio</code></td><td>单选</td><td>string，取 <code>options[].value</code></td><td class="wrap"><code>"①有一些，但在可控范围内"</code></td></tr>
+    <tr><td><code>Checkbox</code></td><td>多选</td><td>string 数组，取 <code>options[].value</code></td><td class="wrap"><code>["高血压","高血脂"]</code></td></tr>
+    <tr><td><code>Date</code></td><td>日期</td><td>string，<code>YYYY-MM-DD</code></td><td class="wrap"><code>"2015-08-12"</code></td></tr>
+    <tr><td><code>DateTime</code></td><td>日期时间</td><td>string，<code>YYYY-MM-DD HH:mm:ss</code></td><td class="wrap"><code>"2024-09-09 09:26:07"</code></td></tr>
+    <tr><td><code>Switch</code></td><td>开关</td><td>number，取字段属性中的 <code>checked_value</code> / <code>unchecked_value</code>（通常 1 / 0）</td><td class="wrap"><code>1</code></td></tr>
+    <tr><td><code>Cascader</code></td><td>级联选择</td><td>string 数组（一条选中路径，自顶向下）；<code>multiple=true</code> 时为 string 二维数组</td><td class="wrap"><code>["高血压","无"]</code>；多选 <code>[["高血压","无"],["糖尿病足","不详"]]</code></td></tr>
+    <tr><td><code>UploadImage</code></td><td>图片</td><td>对象数组 <code>[{"name":"...","url":"..."}]</code>，<code>url</code> 须为<strong>公网可访问</strong>的 HTTPS 地址</td><td>见下方示例</td></tr>
+    <tr><td><code>UploadFile</code></td><td>文件</td><td>同 <code>UploadImage</code></td><td>见下方示例</td></tr>
+    <tr><td><code>Calculated</code></td><td>计算字段</td><td><strong>不接受提交、也不下发</strong>。平台自动计算，结构 / 数据查询接口都不会返回此类字段</td><td>—</td></tr>
+  </tbody>
+</table>
+</div>
+
+<p>上传类字段示例：</p>
+
+<pre><code data-lang="json">[
+  { "name": "检查报告-1.jpg", "url": "https://example.com/reports/1.jpg" },
+  { "name": "检查报告-2.jpg", "url": "https://example.com/reports/2.jpg" }
+]</code></pre>
+
+<h3 id="value-type">4.2 值类型（value_type）</h3>
+
+<p><code>form/detail</code>（5.3）返回的 <code>value_type</code> 标识字段值的数据类型：</p>
+
+<div class="table-wrap">
+<table>
+  <thead><tr><th>value_type</th><th>说明</th></tr></thead>
+  <tbody>
+    <tr><td><code>String</code></td><td>字符串</td></tr>
+    <tr><td><code>Integer</code></td><td>整数</td></tr>
+    <tr><td><code>Float</code></td><td>浮点数</td></tr>
+    <tr><td><code>Boolean</code></td><td>布尔</td></tr>
+    <tr><td><code>Date</code></td><td>日期字符串 <code>YYYY-MM-DD</code></td></tr>
+    <tr><td><code>DateTime</code></td><td>日期时间字符串 <code>YYYY-MM-DD HH:mm:ss</code></td></tr>
+    <tr><td><code>JSON</code></td><td>JSON 结构（数组 / 对象类值）</td></tr>
+  </tbody>
+</table>
+</div>
+
+<h3 id="validation-rules">4.3 校验规则与选项</h3>
+
+<p>以下内容<strong>只有 <code>form/detail</code>（5.3）才返回</strong>（<code>log/find</code>、<code>log/find_detail</code> 只返回字段的值，不返回结构定义）：</p>
+
+<pre><code data-lang="json">"validation_rules": [
+  { "required": true, "message": "请输入空腹血糖值" }
+],
+"options": [
+  { "label": "空腹", "value": "fasting" }        // Select/Radio/Checkbox/Cascader 才有；Cascader 的 children 层级不限
+],
+"switch_values": { "checked_value": 1, "unchecked_value": 0 }   // 仅 Switch 才有
+</code></pre>
+
+<blockquote><p><code>required</code> 已经把字段级与关系级的必填规则汇总好了，可以直接用字段的 <code>required</code> 属性，不必自己再解析 <code>validation_rules</code> 数组。提交值必须取自 <code>options[].value</code>（<code>Cascader</code> 取一条完整路径上各级的 <code>value</code>）。</p></blockquote>
+
+<h3 id="denormalize">4.4 日志查询接口的字段值还原规则</h3>
+
+<p>表单数据在主平台按「一行一个字段」的方式落库，<code>field_value</code> 原始存的是字符串。<code>log/find</code>（5.7）、<code>log/find_detail</code>（5.8）在返回前会按字段的 <code>field_type</code> / <code>value_type</code> 把它还原成下表对应的 JS/JSON 类型，第三方拿到的就是可以直接用的值，不需要再自己解析（<strong><code>submission/detail</code>（5.6）不做这层还原</strong>，按其自身响应示例的口径为准）：</p>
+
+<div class="table-wrap">
+<table>
+  <thead><tr><th>落库存的是</th><th>还原规则</th><th>还原后</th></tr></thead>
+  <tbody>
+    <tr><td><code>Checkbox</code> / <code>Cascader</code> / <code>UploadImage</code> / <code>UploadFile</code> 的值</td><td>JSON.parse</td><td>数组</td></tr>
+    <tr><td><code>Select</code>，<code>multiple=true</code></td><td>JSON.parse</td><td>数组</td></tr>
+    <tr><td><code>Select</code>，单选</td><td>原样返回</td><td>字符串</td></tr>
+    <tr><td><code>Switch</code></td><td>转数字，失败则原样返回</td><td>number（或字符串兜底）</td></tr>
+    <tr><td><code>Input</code>，<code>value_type</code> 为 <code>Integer</code>/<code>Float</code></td><td>转数字，失败则原样返回</td><td>number（或字符串兜底）</td></tr>
+    <tr><td>其它（<code>Textarea</code>/<code>Date</code>/<code>DateTime</code>/字符串型 <code>Input</code> 等）</td><td>原样返回</td><td>字符串</td></tr>
+  </tbody>
+</table>
+</div>
+
+<hr>
+
+<h2 id="api-detail">5. 接口详情</h2>
+
+<blockquote><p>以下接口的请求体均为业务参数；签名相关参数一律放请求头（见 <a href="#common-headers">2.3</a>），不进请求体。每个接口卡片右侧标注了实际调用地址（对照 <a href="#environments">2.1</a>）。</p></blockquote>
+
+<h3 id="api-customer-create">5.1 客户建档</h3>
+
+<p>在项目内为客户建档，使其可以作为 5.4 的 <code>owner</code> 使用。<strong>本接口幂等</strong>：同一标识重复调用不会重复建档，只会把已有客户原样返回。</p>
+
+<div class="endpoint"><span class="verb">POST</span><code class="epath">/v1/customer/create</code><span class="host">open-api</span><button type="button" class="ep-copy" aria-label="复制接口路径">复制</button></div>
+
+<p><strong>请求参数</strong></p>
+
+<div class="table-wrap">
+<table class="w-md">
+  <thead><tr><th>字段</th><th>类型</th><th class="c">必填</th><th>说明</th></tr></thead>
+  <tbody>
+    <tr><td><code>project_code</code></td><td>string(80)</td><td class="c">✓</td><td>项目编码</td></tr>
+    <tr><td><code>owner</code></td><td>object</td><td class="c">✓</td><td>客户标识。建档用什么标识，之后提交就能用什么标识</td></tr>
+    <tr><td><code>owner.type</code></td><td>string</td><td class="c">✓</td><td><code>phone</code>（手机号）或 <code>wechat_unionid</code>（微信 UnionID）。此处<strong>不接受</strong> <code>customer_code</code>——它是建档的产物，不是入参</td></tr>
+    <tr><td><code>owner.value</code></td><td>string(64)</td><td class="c">✓</td><td>标识值</td></tr>
+    <tr><td><code>customer_name</code></td><td>string(50)</td><td class="c">✓</td><td>客户姓名，平台客户列表直接展示该字段</td></tr>
+    <tr><td><code>gender</code></td><td>int</td><td class="c">—</td><td><code>0</code>-未知（默认）/ <code>1</code>-男 / <code>2</code>-女</td></tr>
+  </tbody>
+</table>
+</div>
+
+<p><strong>响应 data</strong></p>
+
+<pre><code data-lang="json">{
+  "customer_code": "cust_7b2e1d9a4c6f8e0b3d5a7c9e1f2b4d6a",  // 平台客户编码，建议存入自己系统
+  "owner": { "type": "phone", "value": "13800138000" },
+  "existed": false                                          // true 表示该标识此前已有建档，本次未新建
+}</code></pre>
+
+<blockquote><p>建议把 <code>customer_code</code> 存进自己的系统：后续 <a href="#api-submission-create">5.4</a> 提交时用 <code>owner: {"type": "customer_code", "value": "cust_…"}</code> 是最稳的一种指代方式 —— 它在项目内唯一，不受客户换手机号影响，也不会撞上 <code>40404</code>。</p></blockquote>
+
+<p><strong>幂等说明</strong>：以 <code>project_code</code> + <code>owner</code> 为准。已有该标识的启用建档时返回 <code>existed: true</code> 与既有 <code>customer_code</code>，不会新建、不会覆盖已有客户资料。并发重复调用同样只会建出一条。</p>
+
+<p><strong>错误</strong>：项目不属于当前凭证 → <code>40301</code>；该标识已有建档但被禁用 → <code>40405</code>（禁用通常是平台侧有意为之，接口不会绕过它另建一条）；该标识已对应多条启用建档 → <code>40404</code>。</p>
+
+<blockquote><p>建档只写入姓名、性别与本次使用的那一个标识。若同一客户既有手机号又有 UnionID，需要两个标识都挂在同一条建档上，请联系平台在后台补录 —— 分两次调用本接口会建出两条独立客户。</p></blockquote>
+
+<h3 id="api-form-list">5.2 查询表单列表</h3>
+
+<p>获取项目下可用的表单。<strong>不限于血糖 / 饮食 / 血压 / 体重</strong> —— 项目下有多少启用中的表单，就能查到多少（实测某测试项目下有 21 个）。</p>
+
+<div class="endpoint"><span class="verb">POST</span><code class="epath">/v1/form/list</code><span class="host">open-api / open-query-api</span><button type="button" class="ep-copy" aria-label="复制接口路径">复制</button></div>
+
+<p><strong>请求参数</strong></p>
+
+<div class="table-wrap">
+<table class="w-md">
+  <thead><tr><th>字段</th><th>类型</th><th class="c">必填</th><th>说明</th></tr></thead>
+  <tbody>
+    <tr><td><code>project_code</code></td><td>string(80)</td><td class="c">✓</td><td>项目编码，必须属于当前 <code>app_key</code> 所属公司</td></tr>
+    <tr><td><code>page</code></td><td>int</td><td class="c">—</td><td>页码，默认 1</td></tr>
+    <tr><td><code>page_size</code></td><td>int</td><td class="c">—</td><td>每页条数，默认 20，最大 100</td></tr>
+  </tbody>
+</table>
+</div>
+
+<p><strong>响应 data</strong></p>
+
+<pre><code data-lang="json">{
+  "total": 35,
+  "page": 1,
+  "page_size": 20,
+  "list": [
+    {
+      "form_code": "form_demo_body_index",
+      "form_name": "身体指标记录表",
+      "form_description": "记录客户体重、血压等基础指标",
+      "updated_at": "2026-06-01 10:00:00"     // 表单定义最后更新时间，可用于判断本地缓存是否失效
+    }
+  ]
+}</code></pre>
+
+<p><strong>错误</strong>：项目不属于当前凭证所属公司 → <code>40301</code>。</p>
+
+<blockquote><p>仅返回启用中的表单；禁用表单不下发，也不接受提交。</p></blockquote>
+
+<h3 id="api-form-detail">5.3 查询表单结构</h3>
+
+<p>获取表单的字段清单与校验规则。<strong>建议缓存</strong>（按 5.2 的 <code>updated_at</code> 判断失效），不要每次提交前实时拉取。</p>
+
+<div class="endpoint"><span class="verb">POST</span><code class="epath">/v1/form/detail</code><span class="host">open-api / open-query-api</span><button type="button" class="ep-copy" aria-label="复制接口路径">复制</button></div>
+
+<p><strong>请求参数</strong></p>
+
+<div class="table-wrap">
+<table class="w-md">
+  <thead><tr><th>字段</th><th>类型</th><th class="c">必填</th><th>说明</th></tr></thead>
+  <tbody>
+    <tr><td><code>project_code</code></td><td>string(80)</td><td class="c">✓</td><td>项目编码</td></tr>
+    <tr><td><code>form_code</code></td><td>string(80)</td><td class="c">✓</td><td>表单编码，来自 5.2</td></tr>
+  </tbody>
+</table>
+</div>
+
+<p><strong>响应 data</strong></p>
+
+<pre><code data-lang="json">{
+  "form_code": "form_demo_body_index",
+  "form_name": "身体指标记录表",
+  "form_description": "记录客户体重、血压等基础指标",
+  "fields": [
+    {
+      "field_code": "field_weight",
+      "field_name": "体重",
+      "field_type": "Input",
+      "value_type": "Float",
+      "required": true,
+      "unit": "kg",
+      "help_text": "",
+      "default_value": null,
+      "validation_rules": [ { "required": true, "message": "请输入体重" } ],
+      "options": null,
+      "multiple": false,
+      "switch_values": null,
+      "field_order": 1
+    }
+  ]
+}</code></pre>
+
+<p><strong>错误</strong>：项目不属于当前凭证所属公司 → <code>40301</code>；表单不存在或已禁用 → <code>40401</code>。</p>
+
+<h4 id="api-form-detail-example">示例：字段清单</h4>
+
+<p>以下为客户基础信息表当前实际下发的字段，供本次对接参考。<strong>字段清单以实际调用本接口的返回为准</strong>——运营人员随时可能增删字段或调整必填，请勿在代码中长期硬编码此表，建议按 <a href="#faq">第 8 节</a> 所述缓存并定期刷新。</p>
+
+<div class="table-wrap">
+<table class="w-lg">
+  <thead><tr><th>field_code</th><th>字段名</th><th>field_type</th><th>value_type</th><th class="c">必填</th><th>单位</th></tr></thead>
+  <tbody>
+    <tr><td><code>field_real_name</code></td><td>姓名</td><td>Input</td><td>String</td><td class="c">✓</td><td>—</td></tr>
+    <tr><td><code>field_birthday</code></td><td>出生年月</td><td>Date</td><td>String</td><td class="c">✓</td><td>—</td></tr>
+    <tr><td><code>field_sex</code></td><td>性别</td><td>Select</td><td>String</td><td class="c">—</td><td>—</td></tr>
+    <tr><td><code>field_height</code></td><td>身高cm</td><td>Input</td><td>Integer</td><td class="c">✓</td><td>cm</td></tr>
+    <tr><td><code>field_weight</code></td><td>体重kg</td><td>Input</td><td>Float</td><td class="c">✓</td><td>kg</td></tr>
+    <tr><td><code>field_diabetes_complications</code></td><td>糖尿病伴发症</td><td>Input</td><td>String</td><td class="c">—</td><td>—</td></tr>
+    <tr><td><code>field_nation</code></td><td>民族</td><td>Select</td><td>String</td><td class="c">—</td><td>—</td></tr>
+    <tr><td><code>field_blood_group</code></td><td>血型</td><td>Input</td><td>String</td><td class="c">—</td><td>—</td></tr>
+    <tr><td><code>field_complication</code></td><td>并发症</td><td>Input</td><td>String</td><td class="c">—</td><td>—</td></tr>
+    <tr><td><code>field_diabetes_duration_period</code></td><td>糖尿病病程</td><td>Input</td><td>String</td><td class="c">—</td><td>—</td></tr>
+    <tr><td><code>field_education_background</code></td><td>学历</td><td>Input</td><td>String</td><td class="c">—</td><td>—</td></tr>
+    <tr><td><code>field_illness_history</code></td><td>疾病史</td><td>Input</td><td>String</td><td class="c">—</td><td>—</td></tr>
+    <tr><td><code>field_marriage_status</code></td><td>婚姻状况</td><td>Input</td><td>String</td><td class="c">—</td><td>—</td></tr>
+    <tr><td><code>field_obesity_grade</code></td><td>肥胖等级</td><td>Input</td><td>String</td><td class="c">—</td><td>—</td></tr>
+    <tr><td><code>field_occupation</code></td><td>职业</td><td>Input</td><td>String</td><td class="c">—</td><td>—</td></tr>
+  </tbody>
+</table>
+</div>
+
+<blockquote class="warn"><p>⚠️ <strong><code>field_age</code>（年龄）、<code>field_BMI</code>（BMI）、<code>field_hyperglycemia_keep</code>（糖龄）不需要传，也不能传</strong>，上表中不包含这三个字段。这三个字段由平台根据出生年月、身高体重等信息自动计算生成，属于计算类字段：本接口不会返回它们，5.4/5.5 提交接口也不接受对它们赋值。<strong>若 <code>field_values</code> 中包含这三个字段中的任意一个，会导致整单被拒绝</strong>（<code>42201</code>，<code>data.errors[].reason = "字段不属于该表单"</code>），其余合法字段也不会入库——请在组装请求前从 payload 中剔除这三个字段。需要年龄 / BMI 数据的场景，请提交 <code>field_birthday</code> 与 <code>field_height</code> / <code>field_weight</code>，由平台自动计算；这两个计算结果目前不通过开放平台对外提供只读查询，如后续需要回显，请联系平台评估。</p></blockquote>
+
+<h3 id="api-submission-create">5.4 新增表单提交</h3>
+
+<p>为某客户新增一条表单提交记录。<strong>每次调用生成一条新记录</strong>（幂等场景见 <code>external_no</code>）。</p>
+
+<div class="endpoint"><span class="verb">POST</span><code class="epath">/v1/submission/create</code><span class="host">open-api</span><button type="button" class="ep-copy" aria-label="复制接口路径">复制</button></div>
+
+<p><strong>请求参数</strong></p>
+
+<div class="table-wrap">
+<table class="w-lg">
+  <thead><tr><th>字段</th><th>类型</th><th class="c">必填</th><th>说明</th></tr></thead>
+  <tbody>
+    <tr><td><code>project_code</code></td><td>string(80)</td><td class="c">✓</td><td>项目编码</td></tr>
+    <tr><td><code>form_code</code></td><td>string(80)</td><td class="c">✓</td><td>表单编码</td></tr>
+    <tr><td><code>owner</code></td><td>object</td><td class="c">✓</td><td>数据归属客户标识，平台按此在项目内映射客户（映射不到 <code>40403</code>，命中多个 <code>40404</code>，建档已禁用 <code>40405</code>）。<strong>推荐用 <code>customer_code</code></strong>：项目内唯一，不会出现 <code>40404</code></td></tr>
+    <tr><td><code>owner.type</code></td><td>string</td><td class="c">✓</td><td>标识类型：<code>phone</code>、<code>wechat_unionid</code> 或 <code>customer_code</code>（来自 <a href="#api-customer-create">5.1</a> 建档回执）</td></tr>
+    <tr><td><code>owner.value</code></td><td>string(80)</td><td class="c">✓</td><td>标识值，如 <code>"13800138000"</code> / <code>"cust_7b2e…"</code></td></tr>
+    <tr><td><code>external_no</code></td><td>string(64)</td><td class="c">—</td><td>第三方业务单号，项目内唯一，用于幂等（见 <a href="#idempotency">2.6</a>）。强烈建议传</td></tr>
+    <tr><td><code>submit_time</code></td><td>string</td><td class="c">—</td><td>数据实际产生时间 <code>YYYY-MM-DD HH:mm:ss</code>，缺省为服务器当前时间。不得晚于当前时间</td></tr>
+    <tr><td><code>field_values</code></td><td>array</td><td class="c">✓</td><td>字段值数组，至少 1 项</td></tr>
+    <tr><td><code>field_values[].field_code</code></td><td>string(80)</td><td class="c">✓</td><td>字段编码，须属于该表单</td></tr>
+    <tr><td><code>field_values[].field_value</code></td><td>按字段类型</td><td class="c">✓</td><td>字段值，格式见 <a href="#field-type">4.1</a></td></tr>
+  </tbody>
+</table>
+</div>
+
+<p><strong>请求示例</strong></p>
+
+<pre><code data-lang="json">{
+  "project_code": "proj_demo_0001",
+  "form_code": "form_demo_body_index",
+  "owner": { "type": "phone", "value": "13800138000" },
+  "external_no": "TP20260720000123",
+  "submit_time": "2026-07-20 09:30:00",
+  "field_values": [
+    { "field_code": "field_weight", "field_value": 68.5 },
+    { "field_code": "field_diabetes_type", "field_value": "2型" },
+    { "field_code": "field_complications", "field_value": ["高血压", "无"] }
+  ]
+}</code></pre>
+
+<p><strong>响应 data</strong></p>
+
+<pre><code data-lang="json">{
+  "submission_code": "subm_1c9f3e2b7a8d4f6e9b0a1c2d3e4f5a6b",   // 请保存，编辑 / 查询凭此编码
+  "form_code": "form_demo_body_index",
+  "owner": { "type": "phone", "value": "13800138000" },
+  "submit_time": "2026-07-20 09:30:00",
+  "is_duplicate": false        // true 表示命中 external_no 幂等，返回的是首次创建的记录
+}</code></pre>
+
+<p><strong>校验失败（42201）响应示例</strong> — <code>data.errors</code> 携带字段级明细：</p>
+
+<pre><code data-lang="json">{
+  "code": 42201,
+  "msg": "字段校验失败",
+  "data": {
+    "errors": [
+      { "field_code": "field_weight", "reason": "必填字段缺失" },
+      { "field_code": "field_diabetes_type", "reason": "值不在选项范围内: 3型" }
+    ]
+  },
+  "request_id": "..."
+}</code></pre>
+
+<p><strong>校验规则汇总</strong>：</p>
+
+<ol>
+  <li><code>field_code</code> 必须属于该表单，否则整单拒绝（<code>42201</code>）</li>
+  <li>表单中 <code>required = true</code> 的字段必须全部出现且值非空</li>
+  <li>值类型 / 格式须符合 4.1；选项类字段值须在 <code>options</code> 范围内</li>
+  <li>不允许包含 <code>Calculated</code> 字段</li>
+  <li>校验采用<strong>整单原子</strong>语义：任一字段不通过则整单不落库</li>
+</ol>
+
+<blockquote><p>本接口写入的数据一旦审核通过，就能在 <a href="#api-log-find">5.7 查询日志列表</a> 里查到（仅限 <code>form_code</code> 是血糖 / 饮食 / 血压 / 体重四类之一）。</p></blockquote>
+
+<h3 id="api-submission-update">5.5 编辑表单提交</h3>
+
+<p>修改已有提交记录中的字段值。<strong>增量语义</strong>：只更新请求中出现的字段，未出现的字段保持原值。</p>
+
+<div class="endpoint"><span class="verb">POST</span><code class="epath">/v1/submission/update</code><span class="host">open-api</span><button type="button" class="ep-copy" aria-label="复制接口路径">复制</button></div>
+
+<p><strong>请求参数</strong></p>
+
+<div class="table-wrap">
+<table class="w-md">
+  <thead><tr><th>字段</th><th>类型</th><th class="c">必填</th><th>说明</th></tr></thead>
+  <tbody>
+    <tr><td><code>project_code</code></td><td>string(80)</td><td class="c">✓</td><td>项目编码</td></tr>
+    <tr><td><code>submission_code</code></td><td>string(80)</td><td class="c">✓</td><td>提交记录编码（5.4 返回）</td></tr>
+    <tr><td><code>field_values</code></td><td>array</td><td class="c">✓</td><td>要更新的字段值数组，至少 1 项，结构同 5.4</td></tr>
+  </tbody>
+</table>
+</div>
+
+<p><strong>请求示例</strong></p>
+
+<pre><code data-lang="json">{
+  "project_code": "proj_demo_0001",
+  "submission_code": "subm_1c9f3e2b7a8d4f6e9b0a1c2d3e4f5a6b",
+  "field_values": [
+    { "field_code": "field_weight", "field_value": 67.8 }
+  ]
+}</code></pre>
+
+<p><strong>响应 data</strong></p>
+
+<pre><code data-lang="json">{
+  "submission_code": "subm_1c9f3e2b7a8d4f6e9b0a1c2d3e4f5a6b",
+  "updated_fields": ["field_weight"]
+}</code></pre>
+
+<p><strong>错误</strong>：记录不存在或不属于该项目 → <code>40402</code>；仅允许编辑本方（同一 <code>app_key</code> 所属公司）提交的记录，越权 → <code>40301</code>；字段校验失败 → <code>42201</code>（规则同 5.4，但必填校验仅针对本次传入的字段——传了就不能为空，没传的不管）。</p>
+
+<h3 id="api-submission-detail">5.6 查询提交详情</h3>
+
+<p>按 <code>submission_code</code> 回查一条提交记录，主要用于联调核对与异常排查。</p>
+
+<div class="endpoint"><span class="verb">POST</span><code class="epath">/v1/submission/detail</code><span class="host">open-api</span><button type="button" class="ep-copy" aria-label="复制接口路径">复制</button></div>
+
+<p><strong>请求参数</strong></p>
+
+<div class="table-wrap">
+<table class="w-md">
+  <thead><tr><th>字段</th><th>类型</th><th class="c">必填</th><th>说明</th></tr></thead>
+  <tbody>
+    <tr><td><code>project_code</code></td><td>string(80)</td><td class="c">✓</td><td>项目编码</td></tr>
+    <tr><td><code>submission_code</code></td><td>string(80)</td><td class="c">✓</td><td>提交记录编码</td></tr>
+  </tbody>
+</table>
+</div>
+
+<p><strong>响应 data</strong></p>
+
+<pre><code data-lang="json">{
+  "submission_code": "subm_1c9f3e2b7a8d4f6e9b0a1c2d3e4f5a6b",
+  "form_code": "form_demo_body_index",
+  "owner": { "type": "phone", "value": "13800138000" },
+  "external_no": "TP20260720000123",
+  "submit_time": "2026-07-20 09:30:00",
+  "created_at": "2026-07-20 09:30:02",
+  "updated_at": "2026-07-20 10:12:45",
+  "field_values": [
+    { "field_code": "field_weight", "field_name": "体重", "field_value": 67.8, "unit": "kg" },
+    { "field_code": "field_diabetes_type", "field_name": "是否确诊为糖尿病", "field_value": "2型", "unit": "" }
+  ]
+}</code></pre>
+
+<p><strong>错误</strong>：记录不存在或不属于该项目 → <code>40402</code>。</p>
+
+<blockquote><p>本接口<strong>不要求</strong>传 <code>owner</code>、也不做字段值类型还原，与 <a href="#api-log-find-detail">5.8</a> 在这两点上不同，注意区分。</p></blockquote>
+
+<h3 id="api-log-find">5.7 查询日志列表</h3>
+
+<p>按 owner + 日志类型查询历史提交记录，仅返回已审核记录，按提交时间倒序分页。<code>owner</code> 所指的客户必须已在项目内建档（见 <a href="#api-customer-create">5.1</a>）。</p>
+
+<div class="endpoint"><span class="verb">POST</span><code class="epath">/v1/log/find</code><span class="host">open-query-api</span><button type="button" class="ep-copy" aria-label="复制接口路径">复制</button></div>
+
+<p><strong>请求参数</strong></p>
+
+<div class="table-wrap">
+<table class="w-lg">
+  <thead><tr><th>字段</th><th>类型</th><th class="c">必填</th><th>说明</th></tr></thead>
+  <tbody>
+    <tr><td><code>project_code</code></td><td>string(80)</td><td class="c">✓</td><td>项目编码，必须属于当前 <code>app_key</code> 所属公司</td></tr>
+    <tr><td><code>form_code</code></td><td>string(80)</td><td class="c">✓</td><td>四选一：<code>form_blood_glucose_log</code> / <code>form_food_log</code> / <code>form_pressure_log</code> / <code>form_weight_log</code></td></tr>
+    <tr><td><code>owner</code></td><td>object</td><td class="c">✓</td><td>数据归属客户标识</td></tr>
+    <tr><td><code>owner.type</code></td><td>string</td><td class="c">✓</td><td><code>phone</code>（手机号）、<code>wechat_unionid</code>（微信 UnionID）或 <code>customer_code</code>（平台客户编码），三选一</td></tr>
+    <tr><td><code>owner.value</code></td><td>string(80)</td><td class="c">✓</td><td>标识值</td></tr>
+    <tr><td><code>page</code></td><td>int</td><td class="c">—</td><td>页码，默认 1</td></tr>
+    <tr><td><code>page_size</code></td><td>int</td><td class="c">—</td><td>每页条数，默认 20，最大 100</td></tr>
+  </tbody>
+</table>
+</div>
+
+<p><strong>请求示例</strong></p>
+
+<pre><code data-lang="json">{
+  "project_code": "proj_8f52dd4458d24ff4a3cc71af94a534c1",
+  "form_code": "form_blood_glucose_log",
+  "owner": { "type": "phone", "value": "13800138000" },
+  "page": 1,
+  "page_size": 20
+}</code></pre>
+
+<p><strong>响应 data</strong></p>
+
+<pre><code data-lang="json">{
+  "total": 2,
+  "page": 1,
+  "page_size": 20,
+  "list": [
+    {
+      "submission_code": "subm_example0000000000000000000001",
+      "submit_time": "2026-09-05 10:28:52",
+      "field_values": [
+        { "field_code": "field_fasting_measure_time", "field_name": "空腹测量时间", "field_value": "2026-09-05 10:28:37", "unit": "" },
+        { "field_code": "field_FBG", "field_name": "空腹血糖值", "field_value": 6.4, "unit": "mmol/l" },
+        { "field_code": "field_FBG_remark", "field_name": "空腹用户留言", "field_value": "早餐前测量，未进食", "unit": "" }
+      ]
+    }
+  ]
+}</code></pre>
+
+<p><strong>错误</strong>：项目不属于当前凭证所属公司 → <code>40301</code>；表单不存在 / 已禁用 / 不在四类范围内 → <code>40401</code>；owner 标识在项目内查无建档 → <code>40403</code>；owner 标识匹配到多个启用建档 → <code>40404</code>；客户已禁用 → <code>40405</code>。</p>
+
+<blockquote><p><code>field_values</code> 只包含仍在表单结构中、且未被禁用 / 设为计算字段的字段——历史提交过但后来被表单调整移除的字段不会出现在响应里，与 <code>form/detail</code> 的口径保持一致。字段值已按 <a href="#denormalize">4.4</a> 规则还原类型。</p></blockquote>
+
+<h3 id="api-log-find-detail">5.8 查询日志详情</h3>
+
+<p>按 <code>submission_code</code> 回查一条记录的完整详情（含创建 / 更新时间）。<strong>必须同时传 <code>owner</code></strong>：服务端把 <code>owner_code</code> 直接写进 SQL 查询条件，owner 与 <code>submission_code</code> 不匹配时和"记录不存在"是完全相同的返回结果——不会告诉你"记录存在但不是这个人的"。</p>
+
+<div class="endpoint"><span class="verb">POST</span><code class="epath">/v1/log/find_detail</code><span class="host">open-query-api</span><button type="button" class="ep-copy" aria-label="复制接口路径">复制</button></div>
+
+<p><strong>请求参数</strong></p>
+
+<div class="table-wrap">
+<table class="w-lg">
+  <thead><tr><th>字段</th><th>类型</th><th class="c">必填</th><th>说明</th></tr></thead>
+  <tbody>
+    <tr><td><code>project_code</code></td><td>string(80)</td><td class="c">✓</td><td>项目编码</td></tr>
+    <tr><td><code>form_code</code></td><td>string(80)</td><td class="c">✓</td><td>四选一，须与 <code>submission_code</code> 实际所属表单一致</td></tr>
+    <tr><td><code>submission_code</code></td><td>string(80)</td><td class="c">✓</td><td>5.7 列表接口返回的记录标识</td></tr>
+    <tr><td><code>owner</code></td><td>object</td><td class="c">✓</td><td>结构同 5.7，用于校验该记录确实属于这个客户</td></tr>
+  </tbody>
+</table>
+</div>
+
+<p><strong>请求示例</strong></p>
+
+<pre><code data-lang="json">{
+  "project_code": "proj_8f52dd4458d24ff4a3cc71af94a534c1",
+  "form_code": "form_blood_glucose_log",
+  "submission_code": "subm_example0000000000000000000001",
+  "owner": { "type": "phone", "value": "13800138000" }
+}</code></pre>
+
+<p><strong>响应 data</strong></p>
+
+<pre><code data-lang="json">{
+  "submission_code": "subm_example0000000000000000000001",
+  "form_code": "form_blood_glucose_log",
+  "submit_time": "2026-09-05 10:28:52",
+  "created_at": "2026-09-05 10:28:52",
+  "updated_at": "2026-09-05 10:28:52",
+  "field_values": [ /* 结构同 5.7 的 field_values */ ]
+}</code></pre>
+
+<p><strong>错误</strong>：项目不属于当前凭证所属公司 → <code>40301</code>；表单不存在 / 已禁用 / 不在四类范围内 → <code>40401</code>；owner 查无建档 → <code>40403</code>；<strong>记录不存在，或记录存在但不属于该 owner</strong> → <code>40402</code>（两种情况返回完全相同，见上方说明）。</p>
+
+<hr>
+
+<h2 id="field-dictionary">6. 日志字段清单</h2>
+
+<p>日志查询接口<code>log/find</code>、<code>log/find_detail</code> 的参数 <code>form_code</code>只接受下面四类</p>
+
+<blockquote><p>以下字段清单来自项目当前的表单结构，运营后续可能调整（新增 / 禁用字段）。已禁用或计算字段不会出现在响应里；若字段发生变化，请以 5.3 / 5.7 / 5.8 的实际响应为准，不要硬编码本清单。</p></blockquote>
+
+<h3 id="fd-blood-glucose">6.1 血糖日志 <code>form_code = 'form_blood_glucose_log'</code></h3>
+
+<div class="table-wrap">
+<table class="w-md">
+  <thead><tr><th>field_code</th><th>字段名</th><th>field_type</th><th>value_type</th><th>unit</th></tr></thead>
+  <tbody>
+    <tr><td><code>field_fasting_measure_time</code></td><td>空腹测量时间</td><td>DateTime</td><td>String</td><td>—</td></tr>
+    <tr><td><code>field_FBG</code></td><td>空腹血糖值</td><td>Input</td><td>Float</td><td>mmol/l</td></tr>
+    <tr><td><code>field_FBG_attachment</code></td><td>空腹附件</td><td>UploadImage</td><td>String</td><td>—</td></tr>
+    <tr><td><code>field_FBG_remark</code></td><td>空腹用户留言</td><td>Textarea</td><td>String</td><td>—</td></tr>
+    <tr><td><code>field_measure_time_after_breakfast</code></td><td>早餐后测量时间</td><td>DateTime</td><td>String</td><td>—</td></tr>
+    <tr><td><code>field_FBG_after_breakfast</code></td><td>早餐后血糖值</td><td>Input</td><td>Float</td><td>mmol/l</td></tr>
+    <tr><td><code>field_FBG_attachment_after_breakfast</code></td><td>早餐后附件</td><td>UploadImage</td><td>String</td><td>—</td></tr>
+    <tr><td><code>field_FBG_remark_after_breakfast</code></td><td>早餐后用户留言</td><td>Textarea</td><td>String</td><td>—</td></tr>
+    <tr><td><code>field_measure_time_after_lunch</code></td><td>午餐后测量时间</td><td>DateTime</td><td>String</td><td>—</td></tr>
+    <tr><td><code>field_FBG_after_lunch</code></td><td>午餐后血糖值</td><td>Input</td><td>Float</td><td>mmol/l</td></tr>
+    <tr><td><code>field_FBG_attachment_after_lunch</code></td><td>午餐后附件</td><td>UploadImage</td><td>String</td><td>—</td></tr>
+    <tr><td><code>field_FBG_remark_after_lunch</code></td><td>午餐后用户留言</td><td>Textarea</td><td>String</td><td>—</td></tr>
+    <tr><td><code>field_measure_time_after_dinner</code></td><td>晚餐后测量时间</td><td>DateTime</td><td>String</td><td>—</td></tr>
+    <tr><td><code>field_FBG_after_dinner</code></td><td>晚餐后血糖值</td><td>Input</td><td>Float</td><td>mmol/l</td></tr>
+    <tr><td><code>field_FBG_attachment_after_dinner</code></td><td>晚餐后附件</td><td>UploadImage</td><td>String</td><td>—</td></tr>
+    <tr><td><code>field_FBG_remark_after_dinner</code></td><td>晚餐后用户留言</td><td>Textarea</td><td>String</td><td>—</td></tr>
+    <tr><td><code>field_measure_time_any_time</code></td><td>随机测量时间</td><td>DateTime</td><td>String</td><td>—</td></tr>
+    <tr><td><code>field_FBG_any_time</code></td><td>随机血糖值</td><td>Input</td><td>Float</td><td>mmol/l</td></tr>
+    <tr><td><code>field_FBG_attachment_any_time</code></td><td>随机附件</td><td>UploadImage</td><td>String</td><td>—</td></tr>
+    <tr><td><code>field_FBG_remark_any_time</code></td><td>随机用户留言</td><td>Textarea</td><td>String</td><td>—</td></tr>
+  </tbody>
+</table>
+</div>
+
+<h3 id="fd-food">6.2 饮食日志 <code>form_code = 'form_food_log'</code></h3>
+
+<div class="table-wrap">
+<table class="w-md">
+  <thead><tr><th>field_code</th><th>字段名</th><th>field_type</th><th>value_type</th><th>unit</th></tr></thead>
+  <tbody>
+    <tr><td><code>field_food_breakfast_time</code></td><td>早餐记录时间</td><td>DateTime</td><td>String</td><td>—</td></tr>
+    <tr><td><code>field_food_breakfast_comment</code></td><td>早餐用户留言</td><td>Textarea</td><td>String</td><td>—</td></tr>
+    <tr><td><code>field_food_breakfast_image</code></td><td>早餐配图</td><td>UploadImage</td><td>String</td><td>—</td></tr>
+    <tr><td><code>field_food_breakfast_log</code></td><td>早餐饮食记录</td><td>Textarea</td><td>String</td><td>—</td></tr>
+    <tr><td><code>field_food_lunch_time</code></td><td>午餐记录时间</td><td>DateTime</td><td>String</td><td>—</td></tr>
+    <tr><td><code>field_food_lunch_comment</code></td><td>午餐用户留言</td><td>Textarea</td><td>String</td><td>—</td></tr>
+    <tr><td><code>field_food_lunch_image</code></td><td>午餐配图</td><td>UploadImage</td><td>String</td><td>—</td></tr>
+    <tr><td><code>field_food_lunch_log</code></td><td>午餐饮食记录</td><td>Textarea</td><td>String</td><td>—</td></tr>
+    <tr><td><code>field_food_dinner_time</code></td><td>晚餐记录时间</td><td>DateTime</td><td>String</td><td>—</td></tr>
+    <tr><td><code>field_food_dinner_comment</code></td><td>晚餐用户留言</td><td>Textarea</td><td>String</td><td>—</td></tr>
+    <tr><td><code>field_food_dinner_image</code></td><td>晚餐配图</td><td>UploadImage</td><td>String</td><td>—</td></tr>
+    <tr><td><code>field_food_dinner_log</code></td><td>晚餐饮食记录</td><td>Textarea</td><td>String</td><td>—</td></tr>
+    <tr><td><code>field_food_add_time</code></td><td>加餐记录时间</td><td>DateTime</td><td>String</td><td>—</td></tr>
+    <tr><td><code>field_food_add_comment</code></td><td>加餐用户留言</td><td>Textarea</td><td>String</td><td>—</td></tr>
+    <tr><td><code>field_food_add_image</code></td><td>加餐配图</td><td>UploadImage</td><td>String</td><td>—</td></tr>
+    <tr><td><code>field_food_add_log</code></td><td>加餐饮食记录</td><td>Textarea</td><td>String</td><td>—</td></tr>
+    <tr><td><code>field_food_any_time</code></td><td>其他记录时间</td><td>DateTime</td><td>String</td><td>—</td></tr>
+    <tr><td><code>field_food_any_comment</code></td><td>其他用户留言</td><td>Textarea</td><td>String</td><td>—</td></tr>
+    <tr><td><code>field_food_any_image</code></td><td>其他配图</td><td>UploadImage</td><td>String</td><td>—</td></tr>
+    <tr><td><code>field_food_any_log</code></td><td>其他饮食记录</td><td>Textarea</td><td>String</td><td>—</td></tr>
+  </tbody>
+</table>
+</div>
+
+<h3 id="fd-pressure">6.3 血压日志 <code>form_code = 'form_pressure_log'</code></h3>
+
+<div class="table-wrap">
+<table class="w-md">
+  <thead><tr><th>field_code</th><th>字段名</th><th>field_type</th><th>value_type</th><th>unit</th></tr></thead>
+  <tbody>
+    <tr><td><code>field_blood_pressure_intime</code></td><td>录入时间</td><td>DateTime</td><td>String</td><td>—</td></tr>
+    <tr><td><code>field_systolic_pressure</code></td><td>收缩压</td><td>Input</td><td>Float</td><td>—</td></tr>
+    <tr><td><code>field_diastolic_pressure</code></td><td>舒张压</td><td>Input</td><td>Float</td><td>—</td></tr>
+    <tr><td><code>field_heart_rate</code></td><td>心率值</td><td>Input</td><td>Float</td><td>—</td></tr>
+  </tbody>
+</table>
+</div>
+
+<h3 id="fd-weight">6.4 体重日志 <code>form_code = 'form_weight_log'</code></h3>
+
+<div class="table-wrap">
+<table class="w-md">
+  <thead><tr><th>field_code</th><th>字段名</th><th>field_type</th><th>value_type</th><th>unit</th></tr></thead>
+  <tbody>
+    <tr><td><code>field_weight_intime</code></td><td>录入时间</td><td>DateTime</td><td>String</td><td>—</td></tr>
+    <tr><td><code>field_weight</code></td><td>体重</td><td>Input</td><td>Float</td><td>kg</td></tr>
+    <tr><td><code>field_fuwei</code></td><td>腹围</td><td>Input</td><td>Float</td><td>—</td></tr>
+    <tr><td><code>field_BMI2</code></td><td>BMI</td><td>Input</td><td>Float</td><td>—</td></tr>
+  </tbody>
+</table>
+</div>
+
+<hr>
+
+<h2 id="error-codes">7. 错误码总表</h2>
+
+<div class="table-wrap">
+<table class="w-md">
+  <thead><tr><th class="r">code</th><th>含义</th><th>处理建议</th></tr></thead>
+  <tbody>
+    <tr><td class="r"><code>0</code></td><td>成功</td><td>—</td></tr>
+    <tr><td class="r"><code>40001</code></td><td>参数错误（缺参 / 类型错 / 格式错 / 携带了 query 参数）</td><td>按 <code>msg</code> 修正请求参数</td></tr>
+    <tr><td class="r"><code>40101</code></td><td><code>app_key</code> 无效</td><td>检查 <code>X-App-Key</code> 是否正确</td></tr>
+    <tr><td class="r"><code>40102</code></td><td><code>app_key</code> 已禁用</td><td>联系平台</td></tr>
+    <tr><td class="r"><code>40103</code></td><td>签名错误</td><td>按 3.3 验证用例排查签名实现；重点检查 body 是否被二次序列化，以及请求地址是否与 2.1 表一致</td></tr>
+    <tr><td class="r"><code>40104</code></td><td>时间戳过期</td><td>校准服务器时间（NTP），偏差须在 ±5 分钟内</td></tr>
+    <tr><td class="r"><code>40105</code></td><td>nonce 重复</td><td>每次请求生成新的随机 nonce；请勿重放同一请求</td></tr>
+    <tr><td class="r"><code>40301</code></td><td>无权访问（项目不属于当前凭证所属公司 / 越权操作他方数据）</td><td>检查 <code>project_code</code> 与凭证归属</td></tr>
+    <tr><td class="r"><code>40401</code></td><td>表单不存在、已禁用，或（对 <code>log/*</code> 接口而言）不在四类开放范围内</td><td>重新获取可用表单列表；<code>log/*</code> 接口确认 <code>form_code</code> 是否四选一之一</td></tr>
+    <tr><td class="r"><code>40402</code></td><td><code>submission/*</code> 接口：提交记录不存在。<code>log/find_detail</code>：提交记录不存在，<strong>或记录存在但不属于所传 owner</strong>（两种情况返回完全相同，见 5.8 说明）</td><td>检查 <code>submission_code</code>（<code>log/find_detail</code> 还需检查 <code>owner</code> 是否匹配）</td></tr>
+    <tr><td class="r"><code>40403</code></td><td>未匹配到客户</td><td>检查 <code>owner.type</code> / <code>owner.value</code>；确认客户已在平台建档；可先调 5.1 建档</td></tr>
+    <tr><td class="r"><code>40404</code></td><td>owner 标识匹配到多个启用中的客户建档</td><td>属平台侧数据问题，联系平台治理；提交时改用 <code>customer_code</code> 可规避</td></tr>
+    <tr><td class="r"><code>40405</code></td><td>客户已禁用</td><td>建档存在但状态为禁用，联系平台启用后重试，标识本身无需改动</td></tr>
+    <tr><td class="r"><code>42201</code></td><td>字段校验失败（<code>submission/create</code> / <code>submission/update</code>）</td><td>按 <code>data.errors</code> 明细逐项修正，参考 4.1 值格式</td></tr>
+    <tr><td class="r"><code>42901</code></td><td>请求过于频繁</td><td>按 <code>X-RateLimit-Reset</code> 退避重试；长期不够用请联系平台调整配额</td></tr>
+    <tr><td class="r"><code>50000</code></td><td>系统内部错误</td><td>携带 <code>request_id</code> 联系平台排查；写入类接口可配合 <code>external_no</code> 安全重试</td></tr>
+  </tbody>
+</table>
+</div>
+
+<hr>
+
+<h2 id="faq">8. 对接注意事项与 FAQ</h2>
+
+<ol>
+  <li><strong>接口分布在两个地址下，为什么要分开排查限流？</strong> 限流按 2.1 表中的地址分别计数（各自独立的 Redis 状态），凭证共用不代表配额共用。排查 <code>42901</code> 时先确认调用的是哪个地址</li>
+  <li><strong>能不能只用日志查询相关接口，不用提交类接口？</strong> 可以，如果只需要读取平台内已有的健康日志。反过来只用提交类接口也可以，只是拿不到 5.7/5.8 的批量日志查询能力（<code>submission/detail</code> 可以按单号回查自己写过的数据，但不支持按 owner 批量查历史）</li>
+  <li><strong>为什么写完 submission/create 之后立刻用 log/find 查不到？</strong> <code>log/find</code>、<code>log/find_detail</code> 只返回 <code>submission_status = 2</code>（已审核）的记录，新提交的数据要先经过平台侧审核流程</li>
+  <li><strong>为什么只能查血糖 / 饮食 / 血压 / 体重这四类日志？</strong> 这是 <code>log/find</code>、<code>log/find_detail</code> 当前的开放范围。项目下还有运动日志、营养档案等其它表单，可以用 <code>form/list</code>、<code>form/detail</code> 查到结构，但日志查询目前只对这四类开放</li>
+  <li><strong>为什么每次都要传 <code>project_code</code>，还要保证归属正确？</strong> 一把 <code>app_key</code>/<code>app_secret</code> 凭证可能对应一家公司名下的多个项目。每个接口都会校验 <code>project_code</code> 是否属于当前凭证所属公司，不属于直接 <code>40301</code></li>
+  <li><strong>为什么查详情传错 owner 返回"记录不存在"（<code>40402</code>），而不是"无权限"？</strong>（<code>log/find_detail</code>）故意如此设计，避免告诉调用方"这个 <code>submission_code</code> 确实存在"，防止被用来批量探测别人的记录</li>
+  <li><strong>客户怎么标识？</strong> 建档（5.1）时只接受 <code>phone</code> / <code>wechat_unionid</code>；建档之后的提交 / 查询接口，<code>owner.type</code> 可以是 <code>phone</code>、<code>wechat_unionid</code> 或 <code>customer_code</code> 三选一。<strong>推荐 <code>customer_code</code></strong>——项目内唯一，结构上不可能出现 <code>40404</code></li>
+  <li><strong>能查到未审核 / 草稿状态的记录吗？</strong> 不能，<code>log/find</code>、<code>log/find_detail</code> 只返回已审核记录</li>
+  <li><strong>列表能按时间范围筛选、能改排序方向吗？</strong> 首期都不支持，<code>form/list</code> 与 <code>log/find</code> 均只支持 <code>page</code> / <code>page_size</code> 分页；<code>log/find</code> 额外固定按提交时间倒序</li>
+  <li><strong>能删除提交吗？</strong> 首期不开放删除。误提交请联系平台处理</li>
+  <li><strong>上传类字段的文件放哪里？</strong> 首期由第三方提供公网可访问的 HTTPS 直链，平台不代存</li>
+  <li><strong>表单结构会变吗？</strong> 会。建议缓存 + 按 <code>updated_at</code> 失效重拉；收到 <code>42201</code> 且 <code>reason</code> 指向未知字段时主动刷新缓存</li>
+  <li><strong>重试怎么做才安全？</strong> <code>submission/create</code> 一律带 <code>external_no</code>；超时后重试同一请求（同 <code>external_no</code> + 新 nonce + 新 timestamp + 重新签名）。<strong>nonce 不能复用</strong>，签名要重算</li>
+  <li><strong>测试环境有沙箱数据吗？</strong> 平台会在测试环境为接入方准备演示项目（含示例表单与测试客户），随凭证一并提供</li>
+</ol>
+
+<hr>
+
+<h2 id="appendix">9. 附录：签名验证用例与示例代码</h2>
+
+<p>下面的示例代码所有接口通用——只需把 <code>BASE_URL</code>（按 2.1 表选择）与 <code>apiPath</code> 换成实际调用的接口路径即可，签名计算逻辑完全一样。</p>
+
+<div class="tabs" id="lang-tabs">
+  <div class="tab-bar" role="tablist" aria-label="多语言示例">
+    <button type="button" class="active" data-tab="panel-curl">curl</button>
+    <button type="button" data-tab="panel-nodejs">Node.js</button>
+    <button type="button" data-tab="panel-python">Python</button>
+    <button type="button" data-tab="panel-java">Java</button>
+  </div>
+
+  <div class="tab-panel active" id="panel-curl">
+    <h3 id="sample-curl">9.1 curl 完整示例（可直接比对签名）</h3>
+    <p>使用 3.3 的示例数据（注意 <code>-d</code> 的 body 必须与参与签名的字节串完全一致）：</p>
+<pre><code data-lang="bash">curl -X POST 'https://open-query-api-test.deepaihealth.cn/v1/log/find' \
+  -H 'Content-Type: application/json; charset=utf-8' \
+  -H 'X-App-Key: ak_demo_7f3a9c2e1b6d' \
+  -H 'X-Timestamp: 1789267200000' \
+  -H 'X-Nonce: 8e4a1c6f9b3d2a7e' \
+  -H 'X-Sign-Version: 2' \
+  -H 'X-Sign: fb9bec6f23c67846da1fa961cea4076b8ed4b671ac0c6b54f106237c81293c58' \
+  -d '{"project_code":"proj_demo_0001","form_code":"form_blood_glucose_log","owner":{"type":"phone","value":"13800138000"},"page":1,"page_size":20}'
+
+# 调用 open-api 地址下的接口时，只需替换 host 与 path，例如：
+# curl -X POST 'https://open-api-test.deepaihealth.cn/v1/customer/create' \
+#   -H '...同上其余 Header...' \
+#   -d '{"project_code":"proj_demo_0001","owner":{"type":"phone","value":"13800138000"},"customer_name":"测试客户"}'</code></pre>
+  </div>
+
+  <div class="tab-panel" id="panel-nodejs">
+    <h3 id="sample-nodejs">9.2 Node.js</h3>
+<pre><code data-lang="js">const crypto = require('crypto');
+
+// apiPath 为不含 query 的接口路径，如 '/v1/log/find' 或 '/v1/customer/create'
+function buildHeaders(appKey, appSecret, apiPath, bodyObj) {
+  const body = JSON.stringify(bodyObj);           // 发送时必须复用这份序列化结果
+  const timestamp = Date.now().toString();
+  const nonce = crypto.randomUUID().replace(/-/g, '');
+  const stringToSign = `POST\n${apiPath}\n${timestamp}\n${nonce}\n${body}`;
+  const sign = crypto.createHmac('sha256', appSecret).update(stringToSign, 'utf8').digest('hex');
+  return {
+    body,
+    headers: {
+      'Content-Type': 'application/json; charset=utf-8',
+      'X-App-Key': appKey,
+      'X-Timestamp': timestamp,
+      'X-Nonce': nonce,
+      'X-Sign-Version': '2',
+      'X-Sign': sign,
+    },
+  };
+}
+
+// 用法：
+// const BASE_URL = 'https://open-query-api-test.deepaihealth.cn'; // 按 2.1 表选择
+// const apiPath = '/v1/log/find';
+// const { body, headers } = buildHeaders(APP_KEY, APP_SECRET, apiPath, { project_code: '...', form_code: '...', owner: {...} });
+// fetch(BASE_URL + apiPath, { method: 'POST', headers, body })</code></pre>
+  </div>
+
+  <div class="tab-panel" id="panel-python">
+    <h3 id="sample-python">9.3 Python</h3>
+<pre><code data-lang="python">import hashlib
+import hmac
+import json
+import time
+import uuid
+
+
+# api_path 为不含 query 的接口路径，如 "/v1/log/find" 或 "/v1/customer/create"
+def build_headers(app_key: str, app_secret: str, api_path: str, body_obj: dict):
+    body = json.dumps(body_obj, ensure_ascii=False, separators=(",", ":"))  # 发送时必须复用这份序列化结果
+    timestamp = str(int(time.time() * 1000))
+    nonce = uuid.uuid4().hex
+    string_to_sign = f"POST\n{api_path}\n{timestamp}\n{nonce}\n{body}"
+    sign = hmac.new(app_secret.encode("utf-8"), string_to_sign.encode("utf-8"), hashlib.sha256).hexdigest()
+    headers = {
+        "Content-Type": "application/json; charset=utf-8",
+        "X-App-Key": app_key,
+        "X-Timestamp": timestamp,
+        "X-Nonce": nonce,
+        "X-Sign-Version": "2",
+        "X-Sign": sign,
+    }
+    return body, headers
+
+# 用法：
+# BASE_URL = "https://open-query-api-test.deepaihealth.cn"  # 按 2.1 表选择
+# api_path = "/v1/log/find"
+# body, headers = build_headers(APP_KEY, APP_SECRET, api_path, {"project_code": "...", "form_code": "...", "owner": {...}})
+# requests.post(BASE_URL + api_path, data=body.encode("utf-8"), headers=headers)</code></pre>
+  </div>
+
+  <div class="tab-panel" id="panel-java">
+    <h3 id="sample-java">9.4 Java</h3>
+<pre><code data-lang="java">import javax.crypto.Mac;
+import javax.crypto.spec.SecretKeySpec;
+import java.nio.charset.StandardCharsets;
+import java.util.UUID;
+
+public final class OpenApiSigner {
+
+    /** path 为不含 query 的接口路径，如 /v1/log/find 或 /v1/customer/create */
+    public static String sign(String appSecret, String method, String path,
+                              String timestamp, String nonce, String body) throws Exception {
+        String stringToSign = method + "\n" + path + "\n" + timestamp + "\n" + nonce + "\n" + body;
+        Mac mac = Mac.getInstance("HmacSHA256");
+        mac.init(new SecretKeySpec(appSecret.getBytes(StandardCharsets.UTF_8), "HmacSHA256"));
+        byte[] digest = mac.doFinal(stringToSign.getBytes(StandardCharsets.UTF_8));
+        StringBuilder hex = new StringBuilder();
+        for (byte b : digest) {
+            hex.append(String.format("%02x", b));
+        }
+        return hex.toString();
+    }
+
+    // 用法：
+    // String BASE_URL = "https://open-query-api-test.deepaihealth.cn"; // 按 2.1 表选择
+    // String path = "/v1/log/find";
+    // String body = "{...}";                                   // 发送时必须复用这份字符串
+    // String timestamp = String.valueOf(System.currentTimeMillis());
+    // String nonce = UUID.randomUUID().toString().replace("-", "");
+    // String sign = sign(appSecret, "POST", path, timestamp, nonce, body);
+    // 请求头另加：X-Sign-Version: 2
+}</code></pre>
+  </div>
+</div>
+
+<h3 id="sign-checklist">9.5 签名自测清单</h3>
+
+<p>联调前请依次确认：</p>
+
+<ul class="checklist">
+  <li>用 3.3 示例数据算出的签名 = <code>fb9bec6f23c67846da1fa961cea4076b8ed4b671ac0c6b54f106237c81293c58</code></li>
+  <li>签名串共 5 段：方法、路径、时间戳、随机串、请求体，顺序不能错</li>
+  <li>参与签名的路径与实际请求的路径完全一致（含大小写与结尾斜杠），且不带 query</li>
+  <li>参与签名的 body 与实际发送的 body 是同一份字节串（同一次序列化）</li>
+  <li>时间戳为毫秒级、服务器时间已做 NTP 校准</li>
+  <li>每次请求（含重试）都生成新 nonce 并重新签名</li>
+  <li><strong>请求实际发送的地址与 2.1 表一致</strong>——发错地址会连接失败或 404</li>
+  <li><code>project_code</code> 已确认属于当前凭证所属公司，避免联调时反复碰到 <code>40301</code></li>
+  <li><code>app_secret</code> 只存在于服务端配置，未出现在任何客户端代码 / 日志 / 版本库中</li>
+</ul>
+
+<footer>
+  深护智康开放平台 · 接口对接文档 v1.0
+</footer>
+
+</article>
+
+<aside class="rail" id="rail" aria-label="本节目录">
+  <div class="rail-in">
+    <p class="rail-t">本节</p>
+    <ul id="railList"></ul>
+  </div>
+</aside>
+</div>
+</main>
+
+<script>
+//JS-START
+(function () {
+  'use strict';
+
+  /* ---------- utils ---------- */
+  function esc(s) {
+    return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  }
+
+  /* ---------- syntax highlighting (string / keyword / comment) ---------- */
+  var RE = {
+    cBlock: /\/\*[\s\S]*?\*\//,
+    cLine: /\/\/[^\n]*/,
+    hash: /#[^\n]*/,
+    dq: /"(?:\\.|[^"\\\n])*"/,
+    sq: /'(?:\\.|[^'\\\n])*'/,
+    bq: /`(?:\\.|[^`\\])*`/
+  };
+
+  var LANGS = {
+    json: [
+      { re: RE.cBlock, cls: 'comment' },
+      { re: RE.cLine, cls: 'comment' },
+      { re: RE.dq, cls: 'string' },
+      { re: /\b(?:true|false|null)\b/, cls: 'keyword' }
+    ],
+    js: [
+      { re: RE.cBlock, cls: 'comment' },
+      { re: RE.cLine, cls: 'comment' },
+      { re: RE.dq, cls: 'string' },
+      { re: RE.sq, cls: 'string' },
+      { re: RE.bq, cls: 'string' },
+      { re: /\b(?:const|let|var|function|return|require|new|typeof|true|false|null)\b/, cls: 'keyword' }
+    ],
+    python: [
+      { re: RE.hash, cls: 'comment' },
+      { re: /[fF]?"(?:\\.|[^"\\\n])*"/, cls: 'string' },
+      { re: /[fF]?'(?:\\.|[^'\\\n])*'/, cls: 'string' },
+      { re: /\b(?:import|from|def|return|True|False|None|str|dict|int|float)\b/, cls: 'keyword' }
+    ],
+    java: [
+      { re: RE.cBlock, cls: 'comment' },
+      { re: RE.cLine, cls: 'comment' },
+      { re: RE.dq, cls: 'string' },
+      { re: /\b(?:public|static|final|class|import|new|for|return|throws|void|byte|String)\b/, cls: 'keyword' }
+    ],
+    bash: [
+      { re: RE.hash, cls: 'comment' },
+      { re: RE.sq, cls: 'string' },
+      { re: RE.dq, cls: 'string' },
+      { re: /\bcurl\b|(?:^|\s)-{1,2}[A-Za-z][\w-]*/, cls: 'keyword' }
+    ]
+  };
+
+  function highlight(text, defs) {
+    var re = new RegExp(defs.map(function (d) { return '(' + d.re.source + ')'; }).join('|'), 'gm');
+    var out = '';
+    var last = 0;
+    var m;
+    while ((m = re.exec(text)) !== null) {
+      out += esc(text.slice(last, m.index));
+      var cls = '';
+      for (var i = 0; i < defs.length; i++) {
+        if (m[i + 1] !== undefined) { cls = defs[i].cls; break; }
+      }
+      out += '<span class="tok-' + cls + '">' + esc(m[0]) + '</span>';
+      last = m.index + m[0].length;
+      if (m[0].length === 0) { re.lastIndex++; }
+    }
+    out += esc(text.slice(last));
+    return out;
+  }
+
+  document.querySelectorAll('#content pre code[data-lang]').forEach(function (code) {
+    var lang = code.getAttribute('data-lang');
+    if (LANGS.hasOwnProperty(lang)) {
+      code.innerHTML = highlight(code.textContent, LANGS[lang]);
+    }
+  });
+
+  /* ---------- copy buttons ---------- */
+  function copyText(t) {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      return navigator.clipboard.writeText(t);
+    }
+    return new Promise(function (resolve, reject) {
+      var ta = document.createElement('textarea');
+      ta.value = t;
+      ta.setAttribute('readonly', '');
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      try {
+        document.execCommand('copy');
+        resolve();
+      } catch (err) {
+        reject(err);
+      }
+      document.body.removeChild(ta);
+    });
+  }
+
+  var LANG_LABEL = {
+    json: 'JSON', js: 'JavaScript', python: 'Python',
+    java: 'Java', bash: 'Shell', text: '流程'
+  };
+
+  function flash(btn, ok, fail) {
+    return function () {
+      btn.textContent = ok;
+      btn.classList.add('ok');
+      setTimeout(function () { btn.textContent = fail; btn.classList.remove('ok'); }, 1600);
+    };
+  }
+
+  document.querySelectorAll('#content pre').forEach(function (pre) {
+    var wrap = document.createElement('div');
+    wrap.className = 'codewrap';
+    pre.parentNode.insertBefore(wrap, pre);
+
+    var head = document.createElement('div');
+    head.className = 'code-head';
+
+    var codeEl = pre.querySelector('code');
+    var lang = codeEl ? codeEl.getAttribute('data-lang') : null;
+    var label = document.createElement('span');
+    label.className = 'code-lang';
+    label.textContent = LANG_LABEL[lang] || (lang || 'CODE');
+    head.appendChild(label);
+
+    var btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'copy-btn';
+    btn.textContent = '复制';
+    head.appendChild(btn);
+
+    wrap.appendChild(head);
+    wrap.appendChild(pre);
+
+    btn.addEventListener('click', function () {
+      var text = codeEl ? codeEl.textContent : pre.textContent;
+      copyText(text).then(flash(btn, '已复制', '复制')).catch(flash(btn, '复制失败', '复制'));
+    });
+  });
+
+  /* ---------- tabs ---------- */
+  function activateTab(panelId) {
+    var panel = document.getElementById(panelId);
+    if (!panel || !panel.classList.contains('tab-panel')) { return false; }
+    var tabs = panel.closest('.tabs');
+    if (!tabs) { return false; }
+    tabs.querySelectorAll('.tab-panel').forEach(function (p) {
+      p.classList.toggle('active', p === panel);
+    });
+    tabs.querySelectorAll('.tab-bar button').forEach(function (b) {
+      b.classList.toggle('active', b.getAttribute('data-tab') === panelId);
+    });
+    return true;
+  }
+
+  document.querySelectorAll('.tab-bar button').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      activateTab(btn.getAttribute('data-tab'));
+      requestSpy();
+    });
+  });
+
+  /* ---------- mobile nav ---------- */
+  var menuBtn = document.getElementById('menuBtn');
+  var backdrop = document.getElementById('backdrop');
+
+  function closeNav() {
+    document.body.classList.remove('nav-open');
+    menuBtn.setAttribute('aria-expanded', 'false');
+  }
+  menuBtn.addEventListener('click', function () {
+    var open = document.body.classList.toggle('nav-open');
+    menuBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
+  });
+  backdrop.addEventListener('click', closeNav);
+
+  /* ---------- anchor navigation (with hidden tab panel support) ---------- */
+  function revealTarget(el) {
+    var panel = el.closest('.tab-panel');
+    if (panel) { activateTab(panel.id); }
+  }
+
+  document.addEventListener('click', function (e) {
+    var a = e.target.closest('a[href^="#"]');
+    if (!a) { return; }
+    var id = decodeURIComponent(a.getAttribute('href').slice(1));
+    var el = document.getElementById(id);
+    if (!el) { return; }
+    e.preventDefault();
+    revealTarget(el);
+    pinnedTarget = linkById[id] ? el : null; /* 只钉住目录里有对应条目的标题 */
+    el.scrollIntoView({ behavior: 'smooth' });
+    if (history.replaceState) {
+      history.replaceState(null, '', '#' + id);
+    }
+    closeNav();
+    requestSpy();
+  });
+
+  /* ---------- scroll spy ---------- */
+  var tocLinks = Array.prototype.slice.call(document.querySelectorAll('#toc-nav a'));
+  var linkById = {};
+  tocLinks.forEach(function (a) {
+    linkById[a.getAttribute('href').slice(1)] = a;
+  });
+  var spyTargets = Array.prototype.slice.call(
+    document.querySelectorAll('#content h2[id], #content h3[id], #content h4[id]')
+  );
+
+  var pinnedTarget = null;
+  ['wheel', 'touchmove', 'keydown', 'mousedown'].forEach(function (ev) {
+    window.addEventListener(ev, function () { pinnedTarget = null; }, { passive: true });
+  });
+
+  function onSpy() {
+    var offset = 60 + 34;
+    var doc = document.documentElement;
+    var cur = null;
+    var next = null;
+    for (var i = 0; i < spyTargets.length; i++) {
+      var h = spyTargets[i];
+      if (h.offsetParent === null) { continue; }
+      if (h.getBoundingClientRect().top <= offset) { cur = h; } else { next = h; break; }
+    }
+    if (cur && next) {
+      var curTop = cur.getBoundingClientRect().top;
+      var nextTop = next.getBoundingClientRect().top;
+      if (curTop < 0 && nextTop <= doc.clientHeight * 0.5) { cur = next; }
+    }
+    if (doc.scrollHeight > doc.clientHeight + 4 &&
+        window.pageYOffset + doc.clientHeight >= doc.scrollHeight - 2) {
+      for (var j = spyTargets.length - 1; j >= 0; j--) {
+        var t = spyTargets[j];
+        if (t.offsetParent === null) { continue; }
+        if (t.getBoundingClientRect().top < doc.clientHeight) { cur = t; break; }
+      }
+    }
+    if (pinnedTarget && pinnedTarget.offsetParent !== null) { cur = pinnedTarget; }
+    if (!cur && spyTargets.length) { cur = spyTargets[0]; }
+    tocLinks.forEach(function (a) { a.classList.remove('active'); });
+    if (cur && linkById[cur.id]) { linkById[cur.id].classList.add('active'); }
+    syncChrome();
+    syncRail(cur);
+  }
+
+  var spyTicking = false;
+  function requestSpy() {
+    if (!spyTicking) {
+      spyTicking = true;
+      requestAnimationFrame(function () {
+        onSpy();
+        spyTicking = false;
+      });
+    }
+  }
+  window.addEventListener('scroll', requestSpy, { passive: true });
+  window.addEventListener('resize', requestSpy, { passive: true });
+
+  function gotoHash() {
+    if (!location.hash) { return false; }
+    var initId = decodeURIComponent(location.hash.slice(1));
+    var initEl = document.getElementById(initId);
+    if (!initEl) { return false; }
+    revealTarget(initEl);
+    var root = document.documentElement;
+    var prev = root.style.scrollBehavior;
+    root.style.scrollBehavior = 'auto';
+    initEl.scrollIntoView();
+    root.style.scrollBehavior = prev;
+    pinnedTarget = linkById[initId] ? initEl : null;
+    return true;
+  }
+  var hadHash = gotoHash();
+
+  if (document.fonts && document.fonts.ready) {
+    document.fonts.ready.then(function () {
+      if (hadHash) { gotoHash(); }
+      onSpy();
+    });
+  }
+
+  /* ---------- 章节号：从标题文本中抽出，单独排版 ---------- */
+  document.querySelectorAll('#content h2[id], #content h3[id], #content h4[id]').forEach(function (h) {
+    var node = h.firstChild;
+    if (!node || node.nodeType !== 3) { return; }
+    var m = node.nodeValue.match(/^\s*(\d+(?:\.\d+)*)[.、]?\s+/);
+    if (!m) { return; }
+    node.nodeValue = node.nodeValue.slice(m[0].length);
+    h.setAttribute('data-num', m[1]);
+    h.setAttribute('data-title', node.nodeValue.trim());
+    var span = document.createElement('span');
+    span.className = 'secnum';
+    span.textContent = m[1];
+    h.insertBefore(span, h.firstChild);
+  });
+
+  /* ---------- 小标题（请求参数 / 响应 data …） ---------- */
+  document.querySelectorAll('#content p').forEach(function (p) {
+    if (p.childNodes.length === 1 && p.firstChild.nodeName === 'STRONG') {
+      p.classList.add('sublabel');
+    }
+  });
+
+  /* ---------- 必填标记 ---------- */
+  document.querySelectorAll('#content td.c').forEach(function (td) {
+    var t = td.textContent.trim();
+    if (t === '✓') { td.innerHTML = '<span class="mk yes">✓</span>'; }
+    else if (t === '—' || t === '-') { td.innerHTML = '<span class="mk no">—</span>'; }
+  });
+
+  /* ---------- 标题锚点 ---------- */
+  document.querySelectorAll('#content h2[id], #content h3[id], #content h4[id]').forEach(function (h) {
+    var a = document.createElement('a');
+    a.className = 'hanchor';
+    a.href = '#' + h.id;
+    a.setAttribute('aria-label', '本节链接');
+    a.textContent = '#';
+    h.appendChild(a);
+  });
+
+  /* ---------- 接口路径复制 ---------- */
+  document.querySelectorAll('.ep-copy').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var p = btn.parentNode.querySelector('.epath');
+      copyText(p ? p.textContent : '')
+        .then(flash(btn, '已复制', '复制'))
+        .catch(flash(btn, '失败', '复制'));
+    });
+  });
+
+  /* ---------- 侧栏目录：抽出编号，另存检索文本 ---------- */
+  document.querySelectorAll('#toc-nav a').forEach(function (a) {
+    var raw = a.textContent.trim();
+    var m = raw.match(/^(\d+(?:\.\d+)?)[.、]?\s+([\s\S]+)$/);
+    a.setAttribute('data-n', m ? m[1] : '');
+    if (m) { a.textContent = m[2]; }
+    a.setAttribute('data-q', raw.toLowerCase());
+  });
+
+  /* ---------- 主题切换 ---------- */
+  var themeBtn = document.getElementById('themeBtn');
+  themeBtn.addEventListener('click', function () {
+    var next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+    document.documentElement.setAttribute('data-theme', next);
+    try { localStorage.setItem('oap-theme', next); } catch (e) {}
+  });
+
+  /* ---------- 目录检索 ---------- */
+  var search = document.getElementById('tocSearch');
+  var noHit = document.getElementById('noHit');
+
+  function runFilter() {
+    var q = search.value.trim().toLowerCase();
+    var hits = 0;
+    document.querySelectorAll('#toc-nav > ul > li').forEach(function (li) {
+      var top = li.querySelector('a');
+      var topHit = !q || (top && top.getAttribute('data-q').indexOf(q) >= 0);
+      var subHit = 0;
+      li.querySelectorAll('ul li').forEach(function (sub) {
+        var link = sub.querySelector('a');
+        var ok = topHit || (!!q && !!link && link.getAttribute('data-q').indexOf(q) >= 0);
+        sub.style.display = (!q || ok) ? '' : 'none';
+        if (ok) { subHit++; }
+      });
+      var show = topHit || subHit > 0;
+      li.style.display = show ? '' : 'none';
+      if (show) { hits++; }
+    });
+    noHit.style.display = hits ? 'none' : 'block';
+  }
+
+  search.addEventListener('input', runFilter);
+  search.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') { search.value = ''; runFilter(); search.blur(); }
+    if (e.key === 'Enter') {
+      var visible = Array.prototype.slice.call(document.querySelectorAll('#toc-nav a'))
+        .filter(function (a) { return a.offsetParent !== null; });
+      if (visible.length) { visible[0].click(); }
+    }
+  });
+
+  document.addEventListener('keydown', function (e) {
+    var tag = (document.activeElement && document.activeElement.tagName) || '';
+    var typing = tag === 'INPUT' || tag === 'TEXTAREA';
+    var slash = e.key === '/' && !typing;
+    var cmdK = (e.metaKey || e.ctrlKey) && (e.key === 'k' || e.key === 'K');
+    if (slash || cmdK) {
+      e.preventDefault();
+      document.body.classList.add('nav-open');
+      search.focus();
+      search.select();
+    }
+  });
+
+  /* ---------- 右侧「本节」导航 ---------- */
+  var rail = document.getElementById('rail');
+  var railList = document.getElementById('railList');
+  var sections = null;
+  var railIdx = -1;
+
+  function buildSections() {
+    sections = [];
+    document.querySelectorAll('#content > h2[id]').forEach(function (h2) {
+      var kids = [];
+      var n = h2.nextElementSibling;
+      while (n && n.tagName !== 'H2') {
+        if ((n.tagName === 'H3' || n.tagName === 'H4') && n.id) {
+          kids.push(n);
+        } else if (n.querySelectorAll) {
+          n.querySelectorAll('h3[id], h4[id]').forEach(function (x) { kids.push(x); });
+        }
+        n = n.nextElementSibling;
+      }
+      sections.push({ h2: h2, kids: kids });
+    });
+  }
+
+  function headingText(h) {
+    var num = h.getAttribute('data-num');
+    var title = h.getAttribute('data-title');
+    if (num && title) { return num + ' ' + title; }
+    return h.textContent.replace(/#$/, '').trim();
+  }
+
+  function renderRail(i) {
+    var sec = sections[i];
+    railList.innerHTML = '';
+    if (!sec || !sec.kids.length) { rail.classList.add('empty'); return; }
+    rail.classList.remove('empty');
+    sec.kids.forEach(function (h3) {
+      var li = document.createElement('li');
+      var a = document.createElement('a');
+      a.href = '#' + h3.id;
+      a.textContent = headingText(h3);
+      li.appendChild(a);
+      railList.appendChild(li);
+    });
+  }
+
+  function syncRail(cur) {
+    if (!sections) { buildSections(); }
+    if (!cur) { return; }
+    var idx = -1;
+    for (var i = 0; i < sections.length; i++) {
+      if (sections[i].h2 === cur || sections[i].kids.indexOf(cur) >= 0) { idx = i; break; }
+    }
+    if (idx < 0) { return; }
+    if (idx !== railIdx) { railIdx = idx; renderRail(idx); }
+    var href = '#' + cur.id;
+    railList.querySelectorAll('a').forEach(function (a) {
+      a.classList.toggle('active', a.getAttribute('href') === href);
+    });
+  }
+
+  /* ---------- 顶栏阴影 + 阅读进度 ---------- */
+  var header = document.getElementById('siteHeader');
+  var progress = document.getElementById('progress');
+
+  function syncChrome() {
+    var d = document.documentElement;
+    var y = window.scrollY || window.pageYOffset;
+    header.classList.toggle('scrolled', y > 4);
+    var max = d.scrollHeight - d.clientHeight;
+    progress.style.transform = 'scaleX(' + (max > 0 ? Math.min(1, y / max) : 0) + ')';
+  }
+
+  onSpy();
+})();
+//JS-END
+</script>
+</body>
+</html>

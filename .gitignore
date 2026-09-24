@@ -6,6 +6,7 @@ dist/
 wheels/
 *.egg-info
 MinerU-4_models_torch/*
+blobs/*
 
 # Virtual environments
 .venv

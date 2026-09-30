@@ -5,8 +5,10 @@ build/
 dist/
 wheels/
 *.egg-info
-MinerU-4_models_torch/*
+/MinerU-4_models_torch
+/MinerU2.5-Pro-2605-1.2B-GGUF
 blobs/*
 
 # Virtual environments
 .venv
+advanced_run.log

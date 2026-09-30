@@ -10,7 +10,7 @@ def main():
     ap.add_argument("input", help="输入文件路径,如 D:\\国赛\\A题\\A题.pdf")
     ap.add_argument("-o", "--output", help="输出目录,默认在输入文件旁边建同名文件夹")
     ap.add_argument("-p", "--pages", default="", help="PDF 页码范围,如 1-5,8;默认全部")
-    ap.add_argument("--tier", default="basic", choices=["flash", "basic"], help="解析档位,默认 basic")
+    ap.add_argument("--tier", default="basic", choices=["flash", "basic", "standard", "advanced"], help="解析档位,默认 basic")
     args = ap.parse_args()
 
     src = Path(args.input)
